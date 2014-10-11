@@ -4,14 +4,6 @@ runtime: python27
 api_version: 1
 threadsafe: false
 
-libraries:
-- name: webapp2
-  version: latest
-- name: jinja2
-  version: latest
-- name: django
-  version: "1.2"
-
 handlers:
 - url: /.*
   script: storefrontssar.application
@@ -33,6 +25,14 @@ handlers:
   expiration: '1d'
 - url: /js/images
   static_dir: /js/images
+
+  libraries:
+- name: webapp2
+  version: latest
+- name: jinja2
+  version: latest
+- name: django
+  version: "1.2"
 
 
 
