@@ -19,16 +19,18 @@
             var productPrice = Number(myMerch[i].productPrice).toFixed(2);;
             var imageurl = myMerch[i].imageurl;
             var productName = myMerch[i].productName;
+            var rowcount = 0;
+            var rowstring = '"#merch' + rowcount + '"';
 
             $(document).ready(function () {
                 if(i == 0) {
                   $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i +'" class="active"></li>');
-                  $('#articleslides').prepend('<div class="item active"><img class="slide-image" src="' + imageurl + '" alt=""></div>');
+                  $('#articleslides').prepend('<div class="item active" ><img class="slide-image" src="' + imageurl + '" alt="" height="400" width="400"></div>');
                 } else {
                   $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
-                  $('#articleslides').prepend('<div class="item"><img class="slide-image" src="' + imageurl +'" alt=""></div>');
+                  $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
                 }
-                $("#merch").prepend('<div class="col-sm-4 col-lg-4 col-md-4"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+                $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
 
             });
         }

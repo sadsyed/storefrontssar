@@ -2,15 +2,15 @@ import json
 from datetime import datetime
 import uuid
 
-articlename = "Green Skirt"
+articlename = "Yellow Hat"
 articleid = str(uuid.uuid1())
-articletype = "Skirt"
-articleimageurl = 'http://lh3.ggpht.com/nlO8hk4TlCHddh9RNaoliNTUi1JlahhiJp6vjFC5ayciwUk2Wq85AN2_vDGeKxcEk1G0T8Q_x7t1TNTDLrniBnaPdA'
-articlelastused = ["2014-9-10"]
-articletimesused = 3
-articletags = ['#Light','#Green']
-articledescription = "A nice casual green cotton skirt."
-articleprice = 45.89
+articletype = "Hat"
+articleimageurl = 'http://lh3.ggpht.com/1_tyP1M_0Y7IWSNXn0JhBUAroU_HMhVix5laS-qBuoCPbmhU2aceVGrW-l8jF8w1bkmLxI5QmCXLmEbVXr9M0Xo'
+articlelastused = ["2014-7-2"]
+articletimesused = 2
+articletags = ['#Yellow']
+articledescription = "A comfortable light yellow hat to block the summer sun."
+articleprice = 28.00
  
 mystructure = {'articlename':articlename,'articleid':articleid,'articletype': articletype, 'articledescription': articledescription, 'articleimageurl':articleimageurl, 'articlelastused':articlelastused, 'articletimesused':articletimesused, 'articletags':articletags,'articleprice':articleprice}
 myjson = json.dumps(mystructure)
@@ -26,3 +26,5 @@ jsonfile.close()
 #"http://lh5.ggpht.com/M4eAhrqeMaoePoxOsuo62VPv1B27avez5-UZtdQ3vBXZNvqWPJbUeUh70PvHKSyxzYZq41G_s0zcJ-LsGpCoEvYDAw"
 #"http://lh6.ggpht.com/wMJOQpJBHm3bG3ZPIz-z4xS2nZ9KNa4MElfBMyfve-sgboSdMfallE1dh2a35XvuiakC9h6tMnaP-pCMM35nvblt" 
 #'http://lh4.ggpht.com/c5uoh26GDHjRzWFcmShN98BUgN3HUHnrNzyzbCOM0ycMQVw4Sq-smanONjp9-AJHGJK1hHH_6R-8MwFqZoWkZdGH'
+#"http://lh3.ggpht.com/-cwUme6uHKiBSGe0898TTp-6VvnS51grHkbcNF_XpFajx8I-mGHGDbQv7VnBodh_HqhF2g8aQwWk_Jp9WI40Z4ncrQ" 
+#"http://lh3.ggpht.com/1_tyP1M_0Y7IWSNXn0JhBUAroU_HMhVix5laS-qBuoCPbmhU2aceVGrW-l8jF8w1bkmLxI5QmCXLmEbVXr9M0Xo"
