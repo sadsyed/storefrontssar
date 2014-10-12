@@ -5,10 +5,6 @@ api_version: 1
 threadsafe: false
 
 handlers:
-- url: /.*
-  script: storefrontssar.application
-- url: /stylesheets
-  static_dir: stylesheets
 - url: /css
   static_dir: css
 - url: /server
@@ -19,20 +15,17 @@ handlers:
   static_dir: img
 - url: /js
   static_dir: js
-- url: /(favicon\.ico|robots\.txt)
-  static_files: static/\1
-  upload: static/(.*)
-  expiration: '1d'
 - url: /js/images
   static_dir: /js/images
+- url: /.*
+  script: storefrontssar.application
 
-  libraries:
+libraries:
 - name: webapp2
   version: latest
 - name: jinja2
   version: latest
-- name: django
-  version: "1.2"
+
 
 
 
