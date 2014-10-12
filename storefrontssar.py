@@ -51,6 +51,7 @@ class myArticle(ndb.Model):
   articletimesused = ndb.IntegerProperty()
   articletags = ndb.StringProperty(repeated=True)
   articleprice = ndb.FloatProperty()
+  articledescription = ndb.StringProperty()
 
 
 class MainPage(webapp2.RequestHandler):
@@ -78,10 +79,13 @@ class CreateArticle(webapp2.RequestHandler):
           logging.info('Got key')
           thisArticle.articlename = data['articlename']
           logging.info('After article name')
+          thisArticle.articledescription = data['articledescription']
+          logging.info('After article description')
           thisArticle.articleid = data['articleid']
           thisArticle.articletype = data['articletype']
           logging.info('After article type')
           thisArticle.articleimageurl = data['articleimageurl']
+          logging.info('After imageurl')
           thisArticle.articlelastused = data['articlelastused']
           logging.info('After article last used')
           thisArticle.articletags = data['articletags']
@@ -123,6 +127,8 @@ class DeleteArticle(webapp2.RequestHandler):
       ndb.delete_multi(article_keys)
       if (not tempresult == {'errorcode':4}):
         result = json.dumps({'errorcode':0})
+      else:
+        result = json.dumps(tempresult)
     except:
       result = json.dumps({'errorcode':1}) # Error code 1: Article name already exists or is not found, or no json data
     self.response.write(result)
@@ -137,23 +143,26 @@ class UseArticle(webapp2.RequestHandler):
     except:
       result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
 
+class ViewArticle(webapp2.RequestHandler):
+  def post(self):
+    try:
+      data = json.loads(self.request.body)
+      logging.info('Json data sent to this function: ' + str(data))
+      result = json.dumps({'errorcode':0})
+    except:
+      result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
 
 class GetMerch(webapp2.RequestHandler):
-    def generateFakeMerch(self):
-      imageurllist = list()
-      productnamelist = list()
-      productdescriptionlist = list()
-      productpricelist = list()
+    def get(self):
+      logging.info('Returning merchandise.')
+      allarticle_query = myArticle.query().order(myArticle.articletimesused)
+      allarticlesbyused = allarticle_query.fetch()
       mymerch = list()
-      for x in range(0,8):
-        thismerch = {'imageurl':"http://lh3.ggpht.com/PG9_oVuSm4fxiCN52AtCiwW8c8wcZZ2sVJtlCMxebID9v84Pcl6BhK1xsif83v3x2MiF1Uodz7OI2q2XVZDzs4U",'productName':"Sadaf Scarf",'productDescription':"This is a beautiful red and black silk scarf that has brought me many years of pleasure.",'productPrice':64.99}
+      for thisarticle in allarticlesbyused:
+        thismerch = {'imageurl':thisarticle.articleimageurl,'productName':thisarticle.articlename,'productDescription':thisarticle.articledescription,'productPrice':thisarticle.articleprice}
         mymerch.append(thismerch)
       logging.info("The merch list: " + str(mymerch))
-      return mymerch
-
-    def get(self):
-      logging.info('This merch' + str(self.generateFakeMerch()))
-      result = json.dumps({'myMerch': self.generateFakeMerch()}) #[{merchandise},{merchandise}]
+      result = json.dumps({'myMerch': mymerch}) #[{merchandise},{merchandise}]
       logging.info("Result is: " + str(result))
       self.response.write(result)
 
@@ -162,7 +171,8 @@ application = webapp2.WSGIApplication([
     ('/GetMerch', GetMerch),
     ('/CreateArticle', CreateArticle),
     ('/DeleteArticle', DeleteArticle),
-    ('/UseArticle', UseArticle)
+    ('/UseArticle', UseArticle),
+    ('/ViewArticle', ViewArticle)
 ], debug=True)
 
 

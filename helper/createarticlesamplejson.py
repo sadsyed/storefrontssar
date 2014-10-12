@@ -2,16 +2,17 @@ import json
 from datetime import datetime
 import uuid
 
-articlename = "School Teacher Sweater"
+articlename = "Green Skirt"
 articleid = str(uuid.uuid1())
-articletype = "Sweater"
-articleimageurl = 'http://lh4.ggpht.com/c5uoh26GDHjRzWFcmShN98BUgN3HUHnrNzyzbCOM0ycMQVw4Sq-smanONjp9-AJHGJK1hHH_6R-8MwFqZoWkZdGH'
-articlelastused = "2014-9-10"
-articletimesused = 10
-articletags = ['#Cardigan','#']
-articleprice = 34.50
+articletype = "Skirt"
+articleimageurl = 'http://lh3.ggpht.com/nlO8hk4TlCHddh9RNaoliNTUi1JlahhiJp6vjFC5ayciwUk2Wq85AN2_vDGeKxcEk1G0T8Q_x7t1TNTDLrniBnaPdA'
+articlelastused = ["2014-9-10"]
+articletimesused = 3
+articletags = ['#Light','#Green']
+articledescription = "A nice casual green cotton skirt."
+articleprice = 45.89
  
-mystructure = {'articlename':articlename,'articleid':articleid,'articletype': articletype, 'articleimageurl':articleimageurl, 'articlelastused':articlelastused, 'articletimesused':articletimesused, 'articletags':articletags,'articleprice':articleprice}
+mystructure = {'articlename':articlename,'articleid':articleid,'articletype': articletype, 'articledescription': articledescription, 'articleimageurl':articleimageurl, 'articlelastused':articlelastused, 'articletimesused':articletimesused, 'articletags':articletags,'articleprice':articleprice}
 myjson = json.dumps(mystructure)
 jsonfile = open("createarticlesamplejson.txt",'w')
 jsonfile.write(str(myjson))

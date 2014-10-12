@@ -6,14 +6,30 @@
         var myMerch = json.myMerch;
         console.log(myMerch.length);
 
+
+        if(myMerch.length == 0) {
+          $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="0" class="active"></li>');
+          $('#articleslides').prepend('<div class="item active"><img class="slide-image" src="Merchandise coming soon..." alt=""></div>');
+        }
+
+
         for( var i=0; i < myMerch.length; i++) {
             console.log('mymerch i: ' + myMerch[i]);
             var productDescription = myMerch[i].productDescription;
-            var productPrice = myMerch[i].productPrice;
+            var productPrice = Number(myMerch[i].productPrice).toFixed(2);;
             var imageurl = myMerch[i].imageurl;
             var productName = myMerch[i].productName;
+
             $(document).ready(function () {
+                if(i == 0) {
+                  $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i +'" class="active"></li>');
+                  $('#articleslides').prepend('<div class="item active"><img class="slide-image" src="' + imageurl + '" alt=""></div>');
+                } else {
+                  $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
+                  $('#articleslides').prepend('<div class="item"><img class="slide-image" src="' + imageurl +'" alt=""></div>');
+                }
                 $("#merch").prepend('<div class="col-sm-4 col-lg-4 col-md-4"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+
             });
         }
     }});
