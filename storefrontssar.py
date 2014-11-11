@@ -75,9 +75,10 @@ class CreateArticle(webapp2.RequestHandler):
     try:
       data = json.loads(self.request.body)
       logging.info('Json data sent to this function: ' + str(data))
-      logging.info("Article ID: " + str(data['articleId']))
-      present_query = myArticle.query(myArticle.articleid == data['articleId'])
+      logging.info("Article Name: " + str(data['articleName']))
+      present_query = myArticle.query(myArticle.articlename == data['articleName'])
       logging.info('Created query')
+      articlereturnid = str(uuid.uuid1())
       try:
         existsarticle = present_query.get()
         logging.info('Query returned: ' + str(existsarticle))
@@ -87,8 +88,7 @@ class CreateArticle(webapp2.RequestHandler):
           thisArticle.articlename = data['articleName']
           logging.info('After article name')
           thisArticle.articledescription = data['articleDescription']
-          logging.info('After article description')
-          thisArticle.articleid = data['articleId']
+          thisArticle.articleid = articlereturnid
           thisArticle.articleowner = data['articleOwner']
           thisArticle.articletype = data['articleType']
           logging.info('After article type')
@@ -112,13 +112,13 @@ class CreateArticle(webapp2.RequestHandler):
           thisArticle.articleoktosell = oktosell
           logging.info('This article: ' + str(thisArticle))
           thisArticle.put()
-          result = json.dumps({'errorcode':0}) # Error code 0: Success
+          result = json.dumps({'returnval':articlereturnid}) # Error code 0: Success
         else:
-          result = json.dumps({'errorcode':5}) # Error code 5: Article already exists
+          result = json.dumps({'returnval':5}) # Error code 5: Article already exists
       except:
-        result = json.dumps({'errorcode':2}) # Error code 2: error writing to datastore
+        result = json.dumps({'returnval':2}) # Error code 2: error writing to datastore
     except:
-      result = json.dumps({'errorcode':1}) # No corred json data
+      result = json.dumps({'returnval':1}) # No corred json data
     self.response.write(result)
 
 class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
@@ -170,12 +170,17 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
                 logging.info("Could not get serving url")
                 result['url'] = ""
               logging.info("Result url" + str(result['url']))
-              myimage = Image(parent=ndb.Key('connexusssar2', 'connexusssar2'))
+              myimage = articleImage(parent=ndb.Key('storefrontssar2', 'storefrontssar2'))
+              logging.info("Got key")
               myimage.imageid = imageid
+              logging.info('after image id')
               myimage.imagefileurl = result['url']
+              logging.info('after url')
               myimage.imagecreationdate = creationdate
-              myimage.imagearticleid = imagearticleid
+              logging.info('after creation date')
+              myimage.imagearticleid = articleid
               myimage.put()
+              logging.info("The image url being assigned is: " + myimage.imagefileurl)
               existsarticle.articleimageurl = myimage.imagefileurl
               existsarticle.put()
         except:
