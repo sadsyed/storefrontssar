@@ -26,6 +26,7 @@ import jinja2
 
 
 APP_ID_GLOBAL = 'storefrontssar2.appspot.com'
+STORAGE_ID_GLOBAL = 'storefrontssar2'
 #Probably not necessary to change default retry params, but here for example
 my_default_retry_params = gcs.RetryParams(initial_delay=0.2,
                                           max_delay=5.0,
@@ -33,7 +34,7 @@ my_default_retry_params = gcs.RetryParams(initial_delay=0.2,
                                           max_retry_period=15)
 tmp_filenames_to_clean_up = []
 gcs.set_default_retry_params(my_default_retry_params)
-ds_key = ndb.Key('storefrontssar2', 'storefrontssar2')
+ds_key = ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL)
 
 JINJA_ENVIRONMENT = jinja2.Environment(
   loader=jinja2.FileSystemLoader(os.path.dirname(__file__) + '/templates'),
@@ -83,7 +84,7 @@ class CreateArticle(webapp2.RequestHandler):
         existsarticle = present_query.get()
         logging.info('Query returned: ' + str(existsarticle))
         if(existsarticle == None):
-          thisArticle = myArticle(parent=ndb.Key('storefrontssar2', 'storefrontssar2'))
+          thisArticle = myArticle(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
           logging.info('Got key')
           thisArticle.articlename = data['articleName']
           logging.info('After article name')
@@ -170,7 +171,7 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
                 logging.info("Could not get serving url")
                 result['url'] = ""
               logging.info("Result url" + str(result['url']))
-              myimage = articleImage(parent=ndb.Key('storefrontssar2', 'storefrontssar2'))
+              myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
               logging.info("Got key")
               myimage.imageid = imageid
               logging.info('after image id')
