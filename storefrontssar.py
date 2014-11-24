@@ -90,6 +90,8 @@ class CreateArticle(webapp2.RequestHandler):
           logging.info('After article name')
           thisArticle.articledescription = data['articleDescription']
           thisArticle.articleid = articlereturnid
+          thisArticle.articlelastused = list()
+          thisArticle.articletimesused = 0
           thisArticle.articleowner = data['articleOwner']
           thisArticle.articletype = data['articleType']
           logging.info('After article type')
@@ -211,7 +213,7 @@ class DeleteArticle(webapp2.RequestHandler):
     try:
       data = json.loads(self.request.body)
       logging.info('Json data sent to this function: ' + str(data))
-      articleidstodelete = data['articleidstodelete'] # list of article names to delete
+      articleidstodelete = data['articleidstodelete'] # list of article ids to delete
       logging.info('Articleids are: ' + str(articleidstodelete))
       article_keys = list()
       image_keys = list()
@@ -258,14 +260,134 @@ class CreateArticlePage(webapp2.RequestHandler):
     logging.info('Writing response')
     self.response.write(fullhtml)
 
+class ReadArticle(webapp2.RequestHandler):
+  def post(self):
+    try:
+      data = json.loads(self.request.body)
+      logging.info('Json data sent to this function: ' + str(data))
+      logging.info("Article ID: " + str(data['articleId']))
+      present_query = myArticle.query(myArticle.articleid == data['articleId'])
+      logging.info('Created query')
+      try:
+        existsarticle = present_query.get()
+        returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+        logging.info('Query returned: ' + str(existsarticle))
+        result = json.dumps(returnarticle)
+      except:
+        pass
+    except:
+      result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+    self.response.write(result)
+
 class UseArticle(webapp2.RequestHandler):
   def post(self):
     try:
       data = json.loads(self.request.body)
       logging.info('Json data sent to this function: ' + str(data))
-      result = json.dumps({'errorcode':0})
+      logging.info("Article ID: " + str(data['articleId']))
+      present_query = myArticle.query(myArticle.articleid == data['articleId'])
+      logging.info('Created query')
+      try:
+        existsarticle = present_query.get()
+        logging.info('Query returned: ' + str(existsarticle))
+        usedate = str(datetime.datetime.now().date())
+        logging.info('Use date is: ' + usedate)
+        tempusedlist = existsarticle.articlelastused
+        tempusedlist.append(usedate)
+        logging.info("Appended date")
+        existsarticle.articletimesused = len(tempusedlist)
+        logging.info('Times used is now: ' + str(len(tempusedlist)))
+        existsarticle.articlelastused = tempusedlist
+        existsarticle.put()
+        result = json.dumps({'errorcode':0})
+      except:
+        result = json.dumps({'errorcode':8}) #Error code 8: unable to update uses for article
     except:
       result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+    self.response.write(result)
+
+class UpdateArticle(webapp2.RequestHandler):
+
+  def post(self):
+    result = {}
+    try:
+      data = json.loads(self.request.body)
+      # for items that have values which are lsits, this specifies if you append or replace the item
+      # does not apply to single items
+      logging.info('Json data sent to this function: ' + str(data))
+      logging.info("Article ID: " + str(data['articleId']))
+      present_query = myArticle.query(myArticle.articleid == data['articleId'])
+      logging.info('Created query')
+      try:
+        existsarticle = present_query.get()
+        logging.info('Query returned: ' + str(existsarticle))
+        if data['fieldToUpdate'] == 'articleName': 
+          existsarticle.articlename = data['newValue']
+          result = json.dumps({'errorcode':0})
+        if data['fieldToUpdate'] == 'articleOwner': 
+          existsarticle.articleowner = data['newValue']
+          result = json.dumps({'errorcode':0})
+        if data['fieldToUpdate'] == 'articleType': 
+          existsarticle.articletype = data['newValue']
+          result = json.dumps({'errorcode':0})
+        if data['fieldToUpdate'] == 'articleLastUsed':
+          try:
+            if data['append'] == 'false':
+              logging.info("Replacing whole last used list.")
+              existsarticle.articlelastused = data['newValue']
+              existsarticle.articletimesused = len(data['newValue'])
+              result = json.dumps({'errorcode':0})
+            else:
+              logging.info('Appending item to last used list')
+              templist = existsarticle.articlelastused
+              templist.append(data['newValue'])
+              existsarticle.articletimesused = len(templist)
+              existsarticle.articlelastused = templist
+              result = json.dumps({'errorcode':0})
+          except:
+            result = json.dumps({'errorcode':7}) # Errorcode 7: did not specify append or replace
+        if data['fieldToUpdate'] == 'articleTags': 
+          try:
+            if data['append'] == 'false':
+              logging.info("Replacing whole taglist.")
+              existsarticle.articletags = data['newValue']
+              result = json.dumps({'errorcode':0})
+            else:
+              logging.info('Appending item to tag list')
+              templist = existsarticle.articletags
+              templist.append(data['newValue'])
+              existsarticle.articletags = templist
+              result = json.dumps({'errorcode':0})
+          except:
+            result = json.dumps({'errorcode':7}) # Errorcode 7: did not specify append or replace
+        if data['fieldToUpdate'] == 'articlePrice':
+          val = 0.0
+          logging.info("Trying to update: " + str(data['fieldToUpdate']))
+          try:
+            val = int(data['newValue'])
+            logging.info("Got past int val.")
+          except ValueError:
+            val = float(data['newValue'])
+            logging.info('got past float val.')
+          existsarticle.articleprice = val
+          result = json.dumps({'errorcode':0})
+        if data['fieldToUpdate'] == 'articleDescription':
+          existsarticle.articledescription = data['newValue']
+          result = json.dumps({'errorcode':0})
+        if data['fieldToUpdate'] == 'articleOkToSell':
+          if data['newValue'] == 'true':
+            existsarticle.articleoktosell = True
+          else:
+            existsarticle.articleoktosell = False
+          result = json.dumps({'errorcode':0})
+        logging.info("Seemed to get value, trying to write")
+        existsarticle.put()
+      except:
+        pass
+      
+    except:
+      result = json.dumps({'errorcode':1}) 
+    self.response.write(result)
 
 class ViewArticle(webapp2.RequestHandler):
   def post(self):
@@ -275,6 +397,41 @@ class ViewArticle(webapp2.RequestHandler):
       result = json.dumps({'errorcode':0})
     except:
       result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+    self.response.write(result)
+
+class GetCategories(webapp2.RequestHandler):
+    def post(self):
+      allarticle_query = myArticle.query().order(myArticle.articletimesused)
+      allarticlesbyused = allarticle_query.fetch()
+      currentcategories = {}
+      for thisarticle in allarticlesbyused:
+        currentcategories[thisarticle.articletype] = thisarticle.articletype
+      returncategories = list()
+      for item in currentcategories:
+        returncategories.append(currentcategories[item])
+      result = json.dumps({'currentCategories':returncategories})
+      self.response.write(result)
+
+class GetCategory(webapp2.RequestHandler):
+    def post(self):
+      try:
+        data = json.loads(self.request.body)
+        logging.info('Json data sent to this function: ' + str(data))
+        logging.info("Article ID: " + str(data['category']))
+        present_query = myArticle.query(myArticle.articletype == data['category'])
+        logging.info('Created query')
+        try:
+          existsarticles = present_query.fetch()
+          returnlist = list()
+          for existsarticle in existsarticles:
+            returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+            returnlist.append(returnarticle)
+          result = json.dumps({'category':returnlist})
+        except:
+          pass
+      except:
+        result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+      self.response.write(result)
 
 class GetMerch(webapp2.RequestHandler):
     def get(self):
@@ -298,7 +455,11 @@ application = webapp2.WSGIApplication([
     ('/DeleteArticle', DeleteArticle),
     ('/UseArticle', UseArticle),
     ('/ViewArticle', ViewArticle),
-    ('/CreateArticlePage', CreateArticlePage)
+    ('/UpdateArticle', UpdateArticle),
+    ('/ReadArticle', ReadArticle),
+    ('/CreateArticlePage', CreateArticlePage),
+    ('/GetCategories', GetCategories),
+    ('/GetCategory', GetCategory)
 ], debug=True)
 
 
