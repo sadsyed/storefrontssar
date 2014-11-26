@@ -25,8 +25,8 @@ import string
 import jinja2
 
 
-APP_ID_GLOBAL = 'storefrontssar2.appspot.com'
-STORAGE_ID_GLOBAL = 'storefrontssar2'
+APP_ID_GLOBAL = 'data-concord-766.appspot.com'
+STORAGE_ID_GLOBAL = 'data-concord-766'
 #Probably not necessary to change default retry params, but here for example
 my_default_retry_params = gcs.RetryParams(initial_delay=0.2,
                                           max_delay=5.0,
@@ -61,6 +61,10 @@ class myArticle(ndb.Model):
   articledescription = ndb.StringProperty()
   articleoktosell = ndb.BooleanProperty()
 
+class Category:
+  def __init__(self, categoryName, lastestUsedArticleImageUrl):
+    self.categoryName = categoryName
+    self.lastestUsedArticleImageUrl = lastestUsedArticleImageUrl
 
 class MainPage(webapp2.RequestHandler):
   def get(self):
@@ -405,10 +409,15 @@ class GetCategories(webapp2.RequestHandler):
       allarticlesbyused = allarticle_query.fetch()
       currentcategories = {}
       for thisarticle in allarticlesbyused:
-        currentcategories[thisarticle.articletype] = thisarticle.articletype
+        #create Category helper object
+        #categoryHelper = Category(thisarticle.articletype, thisarticle.articleimageurl)
+        currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+        #currentarticles[thisarticle.articleimageurl] = thisarticle.articleimageurl
       returncategories = list()
       for item in currentcategories:
-        returncategories.append(currentcategories[item])
+        category = {'name':currentcategories[item].categoryName, 'lastestUsedArticleImageUrl':currentcategories[item].lastestUsedArticleImageUrl}
+        #category = {'name':currentcategories[item]}
+        returncategories.append(category)
       result = json.dumps({'currentCategories':returncategories})
       self.response.write(result)
 
