@@ -2,35 +2,25 @@ application: storefrontssar2
 version: 1
 runtime: python27
 api_version: 1
-threadsafe: false
+threadsafe: yes
 
 handlers:
-- url: /css
-  static_dir: css
-- url: /server
-  static_dir: server
-- url: /fonts
-  static_dir: fonts  
-- url: /img
-  static_dir: img
-- url: /js
-  static_dir: js
-- url: /js/images
-  static_dir: /js/images
-- url: /.*
-  script: storefrontssar.application
+- url: /signup
+  script: main.app
+  secure: always
+
+- url: /login
+  script: main.app
+  secure: always
+
+- url: /forgot
+  script: main.app
+  secure: always
+
+- url: .*
+  script: main.app
+
 
 libraries:
 - name: webapp2
   version: latest
-- name: jinja2
-  version: latest
-
-
-
-
-
-
-
-
-
