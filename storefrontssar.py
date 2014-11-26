@@ -62,9 +62,9 @@ class myArticle(ndb.Model):
   articleoktosell = ndb.BooleanProperty()
 
 class Category:
-  def __init__(self, categoryName, lastestUsedArticleImageUrl):
+  def __init__(self, categoryName, lastUsedArticleImageUrl):
     self.categoryName = categoryName
-    self.lastestUsedArticleImageUrl = lastestUsedArticleImageUrl
+    self.lastUsedArticleImageUrl = lastUsedArticleImageUrl
 
 class MainPage(webapp2.RequestHandler):
   def get(self):
@@ -409,14 +409,10 @@ class GetCategories(webapp2.RequestHandler):
       allarticlesbyused = allarticle_query.fetch()
       currentcategories = {}
       for thisarticle in allarticlesbyused:
-        #create Category helper object
-        #categoryHelper = Category(thisarticle.articletype, thisarticle.articleimageurl)
         currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
-        #currentarticles[thisarticle.articleimageurl] = thisarticle.articleimageurl
       returncategories = list()
       for item in currentcategories:
-        category = {'name':currentcategories[item].categoryName, 'lastestUsedArticleImageUrl':currentcategories[item].lastestUsedArticleImageUrl}
-        #category = {'name':currentcategories[item]}
+        category = {'name':currentcategories[item].categoryName, 'lastUsedArticleImageUrl':currentcategories[item].lastUsedArticleImageUrl}
         returncategories.append(category)
       result = json.dumps({'currentCategories':returncategories})
       self.response.write(result)
