@@ -2,7 +2,21 @@
 
 {% block maincontent %}
 
-<h1>Congratulations {{ user.name }}!</h1>
-<p>If you see this page, it means that you managed to log in successfully.</p>
+
+<div class="container">
+	<H3> Configure Smart Closet Account </H3>
+<div class="row">
+ <div>
+ 	<FORM class="form_container" action="/ConfigureAccount" method="post">
+    Article Creation PIN:	<br><INPUT type="text" name="pin" padding-left:5em><BR>
+    <br>
+    Article Markdown:	<br><INPUT type="text" name="markdown" padding-left:5em><BR>
+    <br>
+    <INPUT class="buttons" type="submit" value="Create Article"> 
+ </FORM>
+</div>
+</div>
+</div>
 
 {% endblock %}
+

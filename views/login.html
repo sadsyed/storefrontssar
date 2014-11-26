@@ -11,10 +11,8 @@
 {% endif %}
 
 <form class="form" action= "/login" method="POST">
-	<label for="username">Username</label>
-	<input type="text" value="{{ username }}" name="username"/>
-	<label for="password">Password</label>
-	<input type="password" name="password"/>
+	Username:    <br><input type="text" value="{{ username }}" name="username" padding-left:5em /><br>
+	Password:    <br><input type="password" name="password" padding-left:5em /><br><br>
 	<button type="submit" class="btn">Login</button>
 </form>
 

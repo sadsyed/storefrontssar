@@ -1,0 +1,86 @@
+{% extends "main.html" %}
+{% block closetcontent %}
+{% autoescape off %}
+
+
+<body>
+
+
+    <!-- Page Content -->
+    <div class="container">
+            <!-- jQuery Version 1.11.0 -->
+        <script src="js/jquery-1.11.0.js"></script>
+        <script src="js/storefrontssar.js"></script>
+
+        <div class="row">
+
+            <div class="col-md-3">
+                <p class="lead">Smart Closet Inventory Sale</p>
+                <div class="row carousel-holder">
+
+                    <div class="col-md-12">
+                        <div id="carousel-example-generic" class="carousel slide" data-ride="carousel">
+                            <ol id="articleslideshow" class="carousel-indicators">
+
+                            </ol>
+                            <div id="articleslides" class="carousel-inner">
+
+                            </div>
+                            <a class="left carousel-control" href="#carousel-example-generic" data-slide="prev">
+                                <span class="glyphicon glyphicon-chevron-left"></span>
+                            </a>
+                            <a class="right carousel-control" href="#carousel-example-generic" data-slide="next">
+                                <span class="glyphicon glyphicon-chevron-right"></span>
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="list-group">
+                    <a href="#" class="list-group-item">Coats</a>
+                    <a href="#" class="list-group-item">Dresses</a>
+                    <a href="#" class="list-group-item">Gloves</a>
+                    <a href="#" class="list-group-item">Hats</a>
+                    <a href="#" class="list-group-item">Pants</a>
+                    <a href="#" class="list-group-item">Scarves</a>
+                    <a href="#" class="list-group-item">Shirts</a>
+                    <a href="#" class="list-group-item">Shoes</a>
+                    <a href="#" class="list-group-item">Shorts</a>
+                    <a href="#" class="list-group-item">Skirts</a>
+                    <a href="#" class="list-group-item">Sweaters</a>
+
+                </div>
+                <!--<div class="col-sm-4 col-lg-4 col-md-4">-->
+                <div class="col-md-12">
+                        <h4><a href="#">Like these items?</a>
+                        </h4>
+                        <p>If you like these items, email me to make an offer!</p>
+                        <a class="btn btn-primary" target="_blank" href="http://storefrontssar2/">Send email.</a>
+                </div>
+            </div>
+
+            <div id="merchmain" class="col-md-9">
+                <!---Loaded merchandise comes below via jQuery storefrontssar.js-->
+
+                <div id="merch0" class="row">
+
+
+
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+    <!-- /.container -->
+
+
+
+</body>
+
+</html>
+{% endautoescape %}
+{% endblock %}
