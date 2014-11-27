@@ -61,6 +61,10 @@ class myArticle(ndb.Model):
   articledescription = ndb.StringProperty()
   articleoktosell = ndb.BooleanProperty()
 
+class Category:
+  def __init__(self, categoryName, lastUsedArticleImageUrl):
+    self.categoryName = categoryName
+    self.lastUsedArticleImageUrl = lastUsedArticleImageUrl
 
 class MainPage(webapp2.RequestHandler):
   def get(self):
@@ -405,10 +409,11 @@ class GetCategories(webapp2.RequestHandler):
       allarticlesbyused = allarticle_query.fetch()
       currentcategories = {}
       for thisarticle in allarticlesbyused:
-        currentcategories[thisarticle.articletype] = thisarticle.articletype
+        currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
       returncategories = list()
       for item in currentcategories:
-        returncategories.append(currentcategories[item])
+        category = {'name':currentcategories[item].categoryName, 'lastUsedArticleImageUrl':currentcategories[item].lastUsedArticleImageUrl}
+        returncategories.append(category)
       result = json.dumps({'currentCategories':returncategories})
       self.response.write(result)
 
