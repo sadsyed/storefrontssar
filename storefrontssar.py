@@ -25,8 +25,8 @@ import string
 import jinja2
 
 
-APP_ID_GLOBAL = 'data-concord-766.appspot.com'
-STORAGE_ID_GLOBAL = 'data-concord-766'
+APP_ID_GLOBAL = 'storefrontssar2.appspot.com'
+STORAGE_ID_GLOBAL = 'storefrontssar2'
 #Probably not necessary to change default retry params, but here for example
 my_default_retry_params = gcs.RetryParams(initial_delay=0.2,
                                           max_delay=5.0,
