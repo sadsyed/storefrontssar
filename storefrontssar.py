@@ -684,11 +684,29 @@ class ConfigureAccount(BaseHandler):
 
 class GetCategories(webapp2.RequestHandler):
     def post(self):
+      emailfilter = None
+      try:
+        data = json.loads(self.request.body)
+        emailfilter = data['emailFilter']
+      except:
+        logging.info("No json data, no email filter.")
       allarticle_query = myArticle.query().order(myArticle.articletimesused)
       allarticlesbyused = allarticle_query.fetch()
       currentcategories = {}
       for thisarticle in allarticlesbyused:
-        currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+        if not emailfilter == None:
+          try:
+            for thisowner in emailfilter:
+              logging.info('is list, owner is: ' + thisowner)
+              if thisarticle.articleowner == thisowner: 
+                logging.info('adding item for owner in list')
+                currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+          except:
+            logging.info('trying to add for owner: ' + emailfilter + ' article is: ' + thisarticle.articleowner)
+            if thisarticle.articleowner == emailfilter: 
+              currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+        else:
+          currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
       returncategories = list()
       for item in currentcategories:
         category = {'name':currentcategories[item].categoryName, 'lastUsedArticleImageUrl':currentcategories[item].lastUsedArticleImageUrl}
