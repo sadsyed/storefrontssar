@@ -36,19 +36,19 @@ handlers:
   static_dir: img
 
 - url: /signup
-  script: main.app
+  script: storefrontssar.app
   secure: always
 
 - url: /login
-  script: main.app
+  script: storefrontssar.app
   secure: always
 
 - url: /forgot
-  script: main.app
+  script: storefrontssar.app
   secure: always
 
 - url: .*
-  script: main.app
+  script: storefrontssar.app
 
 
 libraries:

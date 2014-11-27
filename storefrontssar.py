@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import cloudstorage as gcs
 from google.appengine.api import users
 from google.appengine.api import urlfetch
@@ -10,7 +11,13 @@ import datetime
 from datetime import timedelta
 from time import gmtime, strftime
 from google.appengine.ext import ndb
+from google.appengine.ext.webapp import template
 import webapp2
+from webapp2_extras import auth
+from webapp2_extras import sessions
+from webapp2_extras import security
+from webapp2_extras.auth import InvalidAuthIdError
+from webapp2_extras.auth import InvalidPasswordError
 import logging
 import json
 import cgi
@@ -19,10 +26,10 @@ import urllib2
 from urlparse import urlparse
 import re
 import os
+import os.path
 import uuid
 import base64
 import string
-import jinja2
 
 
 APP_ID_GLOBAL = 'storefrontssar2.appspot.com'
@@ -36,10 +43,12 @@ tmp_filenames_to_clean_up = []
 gcs.set_default_retry_params(my_default_retry_params)
 ds_key = ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL)
 
-JINJA_ENVIRONMENT = jinja2.Environment(
-  loader=jinja2.FileSystemLoader(os.path.dirname(__file__) + '/templates'),
-  extensions=['jinja2.ext.autoescape'],
-  autoescape=True)
+class smartClosetUser(ndb.Model):
+  userPin = ndb.StringProperty()
+  userName = ndb.StringProperty()
+  userEmail = ndb.StringProperty()
+  userMarkdown = ndb.StringProperty()
+
 
 class articleImage(ndb.Model):
   imageid = ndb.StringProperty()
@@ -66,14 +75,259 @@ class Category:
     self.categoryName = categoryName
     self.lastUsedArticleImageUrl = lastUsedArticleImageUrl
 
-class MainPage(webapp2.RequestHandler):
+def user_required(handler):
+  """
+    Decorator that checks if there's a user associated with the current session.
+    Will also fail if there's no session present.
+  """
+  def check_login(self, *args, **kwargs):
+    auth = self.auth
+    if not auth.get_user_by_session():
+      self.redirect(self.uri_for('login'), abort=True)
+    else:
+      return handler(self, *args, **kwargs)
+
+  return check_login
+
+class BaseHandler(webapp2.RequestHandler):
+  @webapp2.cached_property
+  def auth(self):
+    """Shortcut to access the auth instance as a property."""
+    return auth.get_auth()
+
+  @webapp2.cached_property
+  def user_info(self):
+    """Shortcut to access a subset of the user attributes that are stored
+    in the session.
+    The list of attributes to store in the session is specified in
+      config['webapp2_extras.auth']['user_attributes'].
+    :returns
+      A dictionary with most user information
+    """
+    return self.auth.get_user_by_session()
+
+  @webapp2.cached_property
+  def user(self):
+    """Shortcut to access the current logged in user.
+    Unlike user_info, it fetches information from the persistence layer and
+    returns an instance of the underlying model.
+    :returns
+      The instance of the user model associated to the logged in user.
+    """
+    u = self.user_info
+    return self.user_model.get_by_id(u['user_id']) if u else None
+
+  @webapp2.cached_property
+  def user_model(self):
+    """Returns the implementation of the user model.
+    It is consistent with config['webapp2_extras.auth']['user_model'], if set.
+    """    
+    return self.auth.store.user_model
+
+  @webapp2.cached_property
+  def session(self):
+      """Shortcut to access the current session."""
+      return self.session_store.get_session(backend="datastore")
+
+  def render_template(self, view_filename, params=None):
+    if not params:
+      params = {}
+    user = self.user_info
+    params['user'] = user
+    path = os.path.join(os.path.dirname(__file__), 'views', view_filename)
+    self.response.out.write(template.render(path, params))
+
+  def display_message(self, message):
+    """Utility function to display a template with a simple message."""
+    params = {
+      'message': message
+    }
+    self.render_template('message.html', params)
+
+  # this is needed for webapp2 sessions to work
+  def dispatch(self):
+      # Get a session store for this request.
+      self.session_store = sessions.get_store(request=self.request)
+
+      try:
+          # Dispatch the request.
+          webapp2.RequestHandler.dispatch(self)
+      finally:
+          # Save all sessions.
+          self.session_store.save_sessions(self.response)
+
+class MainHandler(BaseHandler):
   def get(self):
-    template = JINJA_ENVIRONMENT.get_template('index.html')
-    template2 = JINJA_ENVIRONMENT.get_template('merch.html')
-    merchhtml = template2.render()
-    templateVars = { "pagehtml" : merchhtml}
-    fullhtml = template.render(templateVars)
-    self.response.write(fullhtml)
+    self.render_template('closetcontent.html')
+
+class SignupHandler(BaseHandler):
+  def get(self):
+    self.render_template('signup.html')
+
+  def post(self):
+    user_name = self.request.get('username')
+    email = self.request.get('email')
+    name = self.request.get('name')
+    password = self.request.get('password')
+    last_name = self.request.get('lastname')
+
+    unique_properties = ['email_address']
+    user_data = self.user_model.create_user(user_name,
+      unique_properties,
+      email_address=email, name=name, password_raw=password,
+      last_name=last_name, verified=False)
+    if not user_data[0]: #user_data is a tuple
+      self.display_message('Unable to create user for email %s because of \
+        duplicate keys %s' % (user_name, user_data[1]))
+      return
+    thisUser = smartClosetUser(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+
+
+    thisUser.userPin = None
+    thisUser.userName = name
+    thisUser.userEmail = email
+    thisUser.userMarkdown = "0.0"
+    thisUser.put()
+    logging.info('User written to database.')
+    user = user_data[1]
+    user_id = user.get_id()
+
+    token = self.user_model.create_signup_token(user_id)
+
+    verification_url = self.uri_for('verification', type='v', user_id=user_id,
+      signup_token=token, _full=True)
+
+    msg = 'Verify account:  <a href="{url}">{url}</a>'
+
+    self.display_message(msg.format(url=verification_url))
+
+class ForgotPasswordHandler(BaseHandler):
+  def get(self):
+    self._serve_page()
+
+  def post(self):
+    username = self.request.get('username')
+
+    user = self.user_model.get_by_auth_id(username)
+    if not user:
+      logging.info('Could not find any user entry for username %s', username)
+      self._serve_page(not_found=True)
+      return
+
+    user_id = user.get_id()
+    token = self.user_model.create_signup_token(user_id)
+
+    verification_url = self.uri_for('verification', type='p', user_id=user_id,
+      signup_token=token, _full=True)
+
+    msg = 'Reset password link:  <a href="{url}">{url}</a>'
+
+    self.display_message(msg.format(url=verification_url))
+  
+  def _serve_page(self, not_found=False):
+    username = self.request.get('username')
+    params = {
+      'username': username,
+      'not_found': not_found
+    }
+    self.render_template('forgot.html', params)
+
+
+class VerificationHandler(BaseHandler):
+  def get(self, *args, **kwargs):
+    user = None
+    user_id = kwargs['user_id']
+    signup_token = kwargs['signup_token']
+    verification_type = kwargs['type']
+
+    # it should be something more concise like
+    # self.auth.get_user_by_token(user_id, signup_token)
+    # unfortunately the auth interface does not (yet) allow to manipulate
+    # signup tokens concisely
+    user, ts = self.user_model.get_by_auth_token(int(user_id), signup_token,
+      'signup')
+
+    if not user:
+      logging.info('Could not find any user with id "%s" signup token "%s"',
+        user_id, signup_token)
+      self.abort(404)
+    
+    # store user data in the session
+    self.auth.set_session(self.auth.store.user_to_dict(user), remember=True)
+
+    if verification_type == 'v':
+      # remove signup token, we don't want users to come back with an old link
+      self.user_model.delete_signup_token(user.get_id(), signup_token)
+
+      if not user.verified:
+        user.verified = True
+        user.put()
+
+      self.display_message('User email address has been verified.')
+      return
+    elif verification_type == 'p':
+      # supply user to the page
+      params = {
+        'user': user,
+        'token': signup_token
+      }
+      self.render_template('resetpassword.html', params)
+    else:
+      logging.info('verification type not supported')
+      self.abort(404)
+
+class SetPasswordHandler(BaseHandler):
+
+  @user_required
+  def post(self):
+    password = self.request.get('password')
+    old_token = self.request.get('t')
+
+    if not password or password != self.request.get('confirm_password'):
+      self.display_message('passwords do not match')
+      return
+
+    user = self.user
+    user.set_password(password)
+    user.put()
+
+    # remove signup token, we don't want users to come back with an old link
+    self.user_model.delete_signup_token(user.get_id(), old_token)
+    
+    self.display_message('Password updated')
+
+class LoginHandler(BaseHandler):
+  def get(self):
+    self._serve_page()
+
+  def post(self):
+    username = self.request.get('username')
+    password = self.request.get('password')
+    try:
+      u = self.auth.get_user_by_password(username, password, remember=True,
+        save_session=True)
+      self.redirect(self.uri_for('authenticated'))
+    except (InvalidAuthIdError, InvalidPasswordError) as e:
+      logging.info('Login failed for user %s because of %s', username, type(e))
+      self._serve_page(True)
+
+  def _serve_page(self, failed=False):
+    username = self.request.get('username')
+    params = {
+      'username': username,
+      'failed': failed
+    }
+    self.render_template('login.html', params)
+
+class LogoutHandler(BaseHandler):
+  def get(self):
+    self.auth.unset_session()
+    self.redirect(self.uri_for('home'))
+
+class AuthenticatedHandler(BaseHandler):
+  @user_required
+  def get(self):
+    self.render_template('authenticated.html')
 
 class CreateArticle(webapp2.RequestHandler):
   def post(self):
@@ -393,14 +647,34 @@ class UpdateArticle(webapp2.RequestHandler):
       result = json.dumps({'errorcode':1}) 
     self.response.write(result)
 
-class ViewArticle(webapp2.RequestHandler):
+class ConfigureAccount(BaseHandler):
+
+  @user_required
   def post(self):
     try:
-      data = json.loads(self.request.body)
-      logging.info('Json data sent to this function: ' + str(data))
-      result = json.dumps({'errorcode':0})
+      logging.info('POST data sent to this function: ' + str(self.request))
+      # find the user we are configuring?
+      # pull username from ndb storage
+      # hash pin
+      # save pin
+      # save markdown
+      user = self.user
+      logging.info("User is: " + str(user))
+      email = user.email_address
+      logging.info("User email: " + email)
+      present_query = smartClosetUser.query(smartClosetUser.userEmail == email)
+      logging.info('Created query')
+      try:
+        existsuser = present_query.get()
+        logging.info("Query returned: " + str(existsuser))
+        existsuser.userPin = self.request.get('pin')
+        existsuser.userMarkdown = self.request.get('markdown')
+        existsuser.put()
+        result = json.dumps({'errorcode':0})
+      except:
+        result = json.dumps({'errorcode':9}) # Error code 9: Can't configure user because user not found.
     except:
-      result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+      pass
     self.response.write(result)
 
 class GetCategories(webapp2.RequestHandler):
@@ -416,6 +690,19 @@ class GetCategories(webapp2.RequestHandler):
         returncategories.append(category)
       result = json.dumps({'currentCategories':returncategories})
       self.response.write(result)
+
+#class GetCategories(webapp2.RequestHandler):
+#    def post(self):
+#      allarticle_query = myArticle.query().order(myArticle.articletimesused)
+#      allarticlesbyused = allarticle_query.fetch()
+#      currentcategories = {}
+#      for thisarticle in allarticlesbyused:
+#        currentcategories[thisarticle.articletype] = thisarticle.articletype
+#      returncategories = list()
+#      for item in currentcategories:
+#        returncategories.append(currentcategories[item])
+#      result = json.dumps({'currentCategories':returncategories})
+#      self.response.write(result)
 
 class GetCategory(webapp2.RequestHandler):
     def post(self):
@@ -452,19 +739,37 @@ class GetMerch(webapp2.RequestHandler):
       logging.info("Result is: " + str(result))
       self.response.write(result)
 
-application = webapp2.WSGIApplication([
-    ('/', MainPage),
+config = {
+  'webapp2_extras.auth': {
+    'user_model': 'models.User',
+    'user_attributes': ['name']
+  },
+  'webapp2_extras.sessions': {
+    'secret_key': 'YOUR_SECRET_KEY'
+  }
+}
+
+app = webapp2.WSGIApplication([
+    webapp2.Route('/', MainHandler, name='home'),
+    webapp2.Route('/signup', SignupHandler),
+    webapp2.Route('/<type:v|p>/<user_id:\d+>-<signup_token:.+>',
+      handler=VerificationHandler, name='verification'),
+    webapp2.Route('/password', SetPasswordHandler),
+    webapp2.Route('/login', LoginHandler, name='login'),
+    webapp2.Route('/logout', LogoutHandler, name='logout'),
+    webapp2.Route('/forgot', ForgotPasswordHandler, name='forgot'),
+    webapp2.Route('/authenticated', AuthenticatedHandler, name='authenticated'),
     ('/GetMerch', GetMerch),
+    ('/ConfigureAccount', ConfigureAccount),
     ('/CreateArticle', CreateArticle),
     ('/AndroidUploadHandler', AndroidUploadHandler),
     ('/DeleteArticle', DeleteArticle),
     ('/UseArticle', UseArticle),
-    ('/ViewArticle', ViewArticle),
     ('/UpdateArticle', UpdateArticle),
     ('/ReadArticle', ReadArticle),
     ('/CreateArticlePage', CreateArticlePage),
     ('/GetCategories', GetCategories),
     ('/GetCategory', GetCategory)
-], debug=True)
+], debug=True, config=config)
 
-
+logging.getLogger().setLevel(logging.DEBUG)
