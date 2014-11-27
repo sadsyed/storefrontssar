@@ -69,6 +69,7 @@ class myArticle(ndb.Model):
   articleprice = ndb.FloatProperty()
   articledescription = ndb.StringProperty()
   articleoktosell = ndb.BooleanProperty()
+  articleprivate = ndb.BooleanProperty()
 
 class Category:
   def __init__(self, categoryName, lastUsedArticleImageUrl):
@@ -371,6 +372,10 @@ class CreateArticle(webapp2.RequestHandler):
           if data['articleOkToSell'] == 'true':
             oktosell = True
           thisArticle.articleoktosell = oktosell
+          aprivate = False
+          if data['articlePrivate'] == 'true':
+            aprivate = True
+          thisArticle.articleprivate = aprivate
           logging.info('This article: ' + str(thisArticle))
           thisArticle.put()
           result = json.dumps({'returnval':articlereturnid}) # Error code 0: Success
