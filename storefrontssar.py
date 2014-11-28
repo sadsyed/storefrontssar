@@ -696,15 +696,15 @@ class GetCategories(webapp2.RequestHandler):
       for thisarticle in allarticlesbyused:
         if not emailfilter == None:
           try:
+            logging.info('trying to add for owner: ' + emailfilter + ' article is: ' + thisarticle.articleowner)
+            if thisarticle.articleowner == emailfilter: 
+              currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+          except:
             for thisowner in emailfilter:
               logging.info('is list, owner is: ' + thisowner)
               if thisarticle.articleowner == thisowner: 
                 logging.info('adding item for owner in list')
                 currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
-          except:
-            logging.info('trying to add for owner: ' + emailfilter + ' article is: ' + thisarticle.articleowner)
-            if thisarticle.articleowner == emailfilter: 
-              currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
         else:
           currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
       returncategories = list()
@@ -714,39 +714,48 @@ class GetCategories(webapp2.RequestHandler):
       result = json.dumps({'currentCategories':returncategories})
       self.response.write(result)
 
-#class GetCategories(webapp2.RequestHandler):
-#    def post(self):
-#      allarticle_query = myArticle.query().order(myArticle.articletimesused)
-#      allarticlesbyused = allarticle_query.fetch()
-#      currentcategories = {}
-#      for thisarticle in allarticlesbyused:
-#        currentcategories[thisarticle.articletype] = thisarticle.articletype
-#      returncategories = list()
-#      for item in currentcategories:
-#        returncategories.append(currentcategories[item])
-#      result = json.dumps({'currentCategories':returncategories})
-#      self.response.write(result)
-
 class GetCategory(webapp2.RequestHandler):
-    def post(self):
+  def post(self):
+    try:
+      emailfilter = None
       try:
         data = json.loads(self.request.body)
-        logging.info('Json data sent to this function: ' + str(data))
-        logging.info("Article ID: " + str(data['category']))
-        present_query = myArticle.query(myArticle.articletype == data['category'])
-        logging.info('Created query')
-        try:
-          existsarticles = present_query.fetch()
-          returnlist = list()
-          for existsarticle in existsarticles:
-            returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
-            returnlist.append(returnarticle)
-          result = json.dumps({'category':returnlist})
-        except:
-          pass
+        emailfilter = data['emailFilter']
+        logging.info("Email filter is: " + emailfilter) 
+        logging.info("Email filter type is: " + str(type(emailfilter)))
       except:
-        result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
-      self.response.write(result)
+        logging.info("No json data for email filter.")
+      present_query = myArticle.query(myArticle.articletype == data['category'])
+      try:
+        returnlist = list()
+        existsarticles = present_query.fetch()
+        returnarticle = {}
+        for existsarticle in existsarticles:
+          if not emailfilter == None:
+            if type(emailfilter) is list:
+              logging.info("this is a list")
+              for thisowner in emailfilter:
+                logging.info("this filter owner is: " + str(thisowner))
+                logging.info("exists article owner is: " + str(existsarticle.articleowner))
+                if existsarticle.articleowner == thisowner:
+                  returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+            else:
+              logging.info("this filter owner is: " + emailfilter)
+              logging.info("exists article owner is: " + str(existsarticle.articleowner))
+              if existsarticle.articleowner == emailfilter:
+                logging.info('found match')
+                returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+          else:
+            returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+          logging.info("Appending return article dict for " + str(existsarticle.articlename))
+          if not returnarticle == {}:
+            returnlist.append(returnarticle)
+        result = json.dumps({'category':returnlist})
+      except:
+        result = json.dumps({'errorcode': 10}) # Error code 10: No article matched filter.
+    except:
+      result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+    self.response.write(result)
 
 class GetMerch(webapp2.RequestHandler):
     def get(self):
