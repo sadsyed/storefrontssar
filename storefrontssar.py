@@ -712,6 +712,7 @@ class GetCategories(webapp2.RequestHandler):
         category = {'name':currentcategories[item].categoryName, 'lastUsedArticleImageUrl':currentcategories[item].lastUsedArticleImageUrl}
         returncategories.append(category)
       result = json.dumps({'currentCategories':returncategories})
+      logging.info("Returning: " + str(result))
       self.response.write(result)
 
 class GetCategory(webapp2.RequestHandler):
@@ -721,8 +722,6 @@ class GetCategory(webapp2.RequestHandler):
       try:
         data = json.loads(self.request.body)
         emailfilter = data['emailFilter']
-        logging.info("Email filter is: " + emailfilter) 
-        logging.info("Email filter type is: " + str(type(emailfilter)))
       except:
         logging.info("No json data for email filter.")
       present_query = myArticle.query(myArticle.articletype == data['category'])
@@ -733,21 +732,15 @@ class GetCategory(webapp2.RequestHandler):
         for existsarticle in existsarticles:
           if not emailfilter == None:
             if type(emailfilter) is list:
-              logging.info("this is a list")
               for thisowner in emailfilter:
-                logging.info("this filter owner is: " + str(thisowner))
-                logging.info("exists article owner is: " + str(existsarticle.articleowner))
                 if existsarticle.articleowner == thisowner:
                   returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
             else:
-              logging.info("this filter owner is: " + emailfilter)
-              logging.info("exists article owner is: " + str(existsarticle.articleowner))
               if existsarticle.articleowner == emailfilter:
                 logging.info('found match')
                 returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
           else:
             returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
-          logging.info("Appending return article dict for " + str(existsarticle.articlename))
           if not returnarticle == {}:
             returnlist.append(returnarticle)
         result = json.dumps({'category':returnlist})
@@ -763,9 +756,13 @@ class GetMerch(webapp2.RequestHandler):
       allarticle_query = myArticle.query().order(myArticle.articletimesused)
       allarticlesbyused = allarticle_query.fetch()
       mymerch = list()
-      for thisarticle in allarticlesbyused:
-        thismerch = {'imageurl':thisarticle.articleimageurl,'productName':thisarticle.articlename,'productDescription':thisarticle.articledescription,'productPrice':thisarticle.articleprice}
-        mymerch.append(thismerch)
+      try: 
+        for thisarticle in allarticlesbyused:
+          if thisarticle.articleoktosell == True:
+            thismerch = {'imageurl':thisarticle.articleimageurl,'productName':thisarticle.articlename,'productDescription':thisarticle.articledescription,'productPrice':thisarticle.articleprice, 'productType':thisarticle.articletype}
+            mymerch.append(thismerch)
+      except:
+        pass
       logging.info("The merch list: " + str(mymerch))
       result = json.dumps({'myMerch': mymerch}) #[{merchandise},{merchandise}]
       logging.info("Result is: " + str(result))
