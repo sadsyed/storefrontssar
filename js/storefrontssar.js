@@ -62,6 +62,7 @@
     }});
 
 $(document).ready(function() {
+  $('#Error').hide();
   $('#All').click( function() {
     $('#merch0').empty();  
     $('#articleslideshow').empty();
@@ -107,6 +108,7 @@ $(document).delegate('.btn-primary', 'click', function()
       $('html').html(returndata.htmlVal);
     }, error: function(jqXHR, textStatus, errorThrown) {
       console.log("There was an error.")
+      $('#Error').show();
     }, data: jsonData });
 });   
 
@@ -586,6 +588,10 @@ $(document).delegate('#Sweaters', 'click', function()
 
       });
   }
+});
+
+$(document).click(function() {
+  $('#Error').hide();
 });
   
 } (jQuery)));
