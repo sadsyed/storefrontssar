@@ -682,6 +682,40 @@ class ConfigureAccount(BaseHandler):
       pass
     self.response.write(result)
 
+class GetSaleCategories(webapp2.RequestHandler):
+    def post(self):
+      emailfilter = None
+      try:
+        data = json.loads(self.request.body)
+        emailfilter = data['emailFilter']
+      except:
+        logging.info("No json data, no email filter.")
+      allarticle_query = myArticle.query().order(myArticle.articletimesused)
+      allarticlesbyused = allarticle_query.fetch()
+      currentcategories = {}
+      for thisarticle in allarticlesbyused:
+        if not emailfilter == None:
+          try:
+            logging.info('trying to add for owner: ' + emailfilter + ' article is: ' + thisarticle.articleowner)
+            if thisarticle.articleowner == emailfilter and thisarticle.articleoktosell: 
+              currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+          except:
+            for thisowner in emailfilter:
+              logging.info('is list, owner is: ' + thisowner)
+              if thisarticle.articleowner == thisowner and thisarticle.articleoktosell: 
+                logging.info('adding item for owner in list')
+                currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+        else:
+          if thisarticle.articleoktosell:
+            currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+      returncategories = list()
+      for item in currentcategories:
+        category = {'name':currentcategories[item].categoryName, 'lastUsedArticleImageUrl':currentcategories[item].lastUsedArticleImageUrl}
+        returncategories.append(category)
+      result = json.dumps({'currentCategories':returncategories})
+      logging.info("Returning: " + str(result))
+      self.response.write(result)
+
 class GetCategories(webapp2.RequestHandler):
     def post(self):
       emailfilter = None
@@ -706,7 +740,7 @@ class GetCategories(webapp2.RequestHandler):
                 logging.info('adding item for owner in list')
                 currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
         else:
-          currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+            currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
       returncategories = list()
       for item in currentcategories:
         category = {'name':currentcategories[item].categoryName, 'lastUsedArticleImageUrl':currentcategories[item].lastUsedArticleImageUrl}
@@ -798,6 +832,7 @@ app = webapp2.WSGIApplication([
     ('/ReadArticle', ReadArticle),
     ('/CreateArticlePage', CreateArticlePage),
     ('/GetCategories', GetCategories),
+    ('/GetSaleCategories', GetSaleCategories),
     ('/GetCategory', GetCategory)
 ], debug=True, config=config)
 
