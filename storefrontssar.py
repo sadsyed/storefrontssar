@@ -33,8 +33,8 @@ import base64
 import string
 
 
-APP_ID_GLOBAL = 'storefrontssar2.appspot.com'
-STORAGE_ID_GLOBAL = 'storefrontssar2'
+APP_ID_GLOBAL = 'data-concord-766.appspot.com'
+STORAGE_ID_GLOBAL = 'data-concord-766'
 #Probably not necessary to change default retry params, but here for example
 my_default_retry_params = gcs.RetryParams(initial_delay=0.2,
                                           max_delay=5.0,
@@ -175,6 +175,8 @@ class SignupHandler(BaseHandler):
     self.render_template('signup.html')
 
   def post(self):
+    url = 'http://' + APP_ID_GLOBAL + '/CreateProfile'
+    logging.info('URL for CreateProfile is : ' + str(url))
     user_name = self.request.get('username')
     email = self.request.get('email')
     name = self.request.get('name')
@@ -190,26 +192,23 @@ class SignupHandler(BaseHandler):
       self.display_message('Unable to create user for email %s because of \
         duplicate keys %s' % (user_name, user_data[1]))
       return
-    thisUser = smartClosetUser(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
 
+    createParams = json.dumps({'username':user_name, 'email':email, 'name':name, 'password':password, 'lastname':last_name})
+    result = urlfetch.fetch(url=url, payload=createParams, method=urlfetch.POST, headers={'Content-Type': 'application/json'}, deadline=30)
+    logging.info('CreateProfile Result is: ' + str(result.content))
+    jsonresult = json.loads(result.content)
+    if jsonresult['errorcode'] == 0:
+      user = user_data[1]
+      user_id = user.get_id() 
 
-    thisUser.userPin = None
-    thisUser.userName = name
-    thisUser.userEmail = email
-    thisUser.userMarkdown = "0.0"
-    thisUser.put()
-    logging.info('User written to database.')
-    user = user_data[1]
-    user_id = user.get_id()
+      token = self.user_model.create_signup_token(user_id)
 
-    token = self.user_model.create_signup_token(user_id)
+      verification_url = self.uri_for('verification', type='v', user_id=user_id,
+        signup_token=token, _full=True)
 
-    verification_url = self.uri_for('verification', type='v', user_id=user_id,
-      signup_token=token, _full=True)
+      msg = 'Verify account:  <a href="{url}">{url}</a>'
 
-    msg = 'Verify account:  <a href="{url}">{url}</a>'
-
-    self.display_message(msg.format(url=verification_url))
+      self.display_message(msg.format(url=verification_url))
 
 class ForgotPasswordHandler(BaseHandler):
   def get(self):
@@ -873,6 +872,39 @@ config = {
   }
 }
 
+class CreateProfile(webapp2.RequestHandler):
+  def post(self):
+    try:
+      data = json.loads(self.request.body)
+      logging.info('Json data sent to this function: ' + str(data))
+
+      user_name = data['username']
+      logging.info('user_name: ' + str(user_name))
+      email = data['email']
+      logging.info('email: ' + str(email))
+      name = data['name']
+      logging.info('name: ' + str(name))
+      password = data['password']
+      logging.info('password: ' + str(password))
+      last_name = data['lastname']
+      logging.info('lastname: ' +str(last_name))
+      
+      thisUser = smartClosetUser(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+
+      thisUser.userPin = None
+      thisUser.userName = name
+      thisUser.userEmail = email
+      thisUser.userMarkdown = "0.0"
+      thisUser.put()
+      logging.info('User written to database.')
+      result = json.dumps({'errorcode':0})
+      logging.info('Create Profile successed with errorcode: ' + str(result))
+    except:
+      result = json.dumps({'errorcode':1})
+      logging.info('Create Profile failed with errorcode: ' + str(result))
+    self.response.write(result)
+
+
 app = webapp2.WSGIApplication([
     webapp2.Route('/', MainHandler, name='home'),
     webapp2.Route('/signup', SignupHandler),
@@ -896,7 +928,8 @@ app = webapp2.WSGIApplication([
     ('/CreateArticlePage', CreateArticlePage),
     ('/GetCategories', GetCategories),
     ('/GetSaleCategories', GetSaleCategories),
-    ('/GetCategory', GetCategory)
+    ('/GetCategory', GetCategory),
+    ('/CreateProfile', CreateProfile)
 ], debug=True, config=config)
 
 logging.getLogger().setLevel(logging.DEBUG)
