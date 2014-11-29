@@ -2,16 +2,22 @@
 
 {% block maincontent %}
 
-
+<link href="css/bootstrap.min.css" rel="stylesheet">
 <div class="container">
+	<br>
+	<br>
+	<br>
+	<br>
 	<H3> Contact Seller For Item {{itemname}}</H3>
-	Your contact information (Email) will be automatically provided to the seller.
+	Your contact information (Email) will be automatically provided to the seller.</br>
+	<br>
 <div class="row">
  <div>
  	<FORM class="form_container" action="/SendEmail" method="post">
-    Message:	<br><br><INPUT type="textarea" name="pin" padding-left:5em rows="10" cols="50"><BR>
+    Message:	<br><br><INPUT type="textarea" name="message" padding-left:5em rows="10" cols="50"><BR>
+    <input type="hidden" name="itemname" value="{{itemname}}">
     <br>
-    <INPUT class="buttons" type="submit" value="Send Email"> 
+    <INPUT class="buttons" type="submit" value="Send Email">
  </FORM>
 </div>
 </div>

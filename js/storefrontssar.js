@@ -104,8 +104,9 @@ $(document).delegate('.btn-primary', 'click', function()
     var jsonData = {itemName: this.id};
     $.ajax({type:"POST", dataType: "json", url: "/EmailPage", success:function(returndata) {
       console.log("Got success");
+      $('html').html(returndata.htmlVal);
     }, error: function(jqXHR, textStatus, errorThrown) {
-      console.log("There was an error :" + textStatus + " " + errorThrown);
+      console.log("There was an error.")
     }, data: jsonData });
 });   
 

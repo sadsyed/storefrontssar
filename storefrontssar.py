@@ -796,34 +796,41 @@ class GetCategory(webapp2.RequestHandler):
 class SendEmail(BaseHandler):
   @user_required
   def post(self):
-    #get json data from post for sender email, item, and content
-    #get item for query
-    #query to find item and pull email
-    #user = self.user
-    #logging.info("User is: " + str(user))
-    #email = user.email_address
-    #logging.info("User email: " + email)
-    #present_query = smartClosetUser.query(smartClosetUser.userEmail == email)
-    #logging.info('Created query')
-    #try:
-    #  existsuser = present_query.get()
-    #  logging.info("Query returned: " + str(existsuser))
-    emailTargetAddress = "amy_hindman@yahoo.com"
-    emailSenderAddress = "smart.closet.service@gmail.com"
-    itemName = "Test item"
-    content = "This is a test email."
+    try:
+      user = self.user
+      logging.info("User is: " + str(user))
+      email = user.email_address
+      logging.info("User email: " + email)
+      itemName = self.request.get('itemname')
+      logging.info("Got itemname")
+      present_query = myArticle.query(myArticle.articlename == itemName)
+      logging.info('Created query')
+      existsitem = None
+      try:
+        existsitem = present_query.get()
+        logging.info("Query returned: " + str(existsitem))
+      except:
+        logging.info("Found no item by that name")
+      logging.info("send email request info" + str(self.request))
+      emailTargetAddress = existsitem.articleowner
+      logging.info("Got article owner")
+      emailSenderAddress = "smart.closet.service@gmail.com"
+      logging.info("set email address")
+      content = "Your received a message from: " + email + "\nThe message is: \n" + self.request.get('message')
+      logging.info('set content')
 
-    message = mail.EmailMessage(sender=emailSenderAddress, subject="Smart Closet Item Inquiry: " + itemName)
+      message = mail.EmailMessage(sender=emailSenderAddress, subject="Smart Closet Item Inquiry: " + itemName)
 
-    if not mail.is_email_valid(emailTargetAddress):
-      logging.info("The email is not valid.")
-      self.response.out.write("Email address is not valid.")
+      if not mail.is_email_valid(emailTargetAddress):
+        logging.info("The email is not valid.")
+        self.response.out.write("Email address is not valid.")
 
-    message.to = emailTargetAddress
-    message.body = """%s""" %(content)
-    message.send()
-    logging.info("Message sent")
-    self.response.out.write("Message sent successfully!")
+      message.to = emailTargetAddress
+      message.body = """%s""" %(content)
+      message.send()
+      self.display_message("Message successfully sent.")
+    except:
+      self.display_message("Unable to contact seller at this time or item is no longer available.")
 
 class EmailPage(BaseHandler):
   @user_required
@@ -831,7 +838,7 @@ class EmailPage(BaseHandler):
     logging.info("Request is: " + str(self.request))
     data = self.request.get('itemName')
     logging.info('Json data sent to this function: ' + str(data))
-    params = {'itemName': data}
+    params = {'itemname': str(data)}
     teststring = self.render_template2('email.html', params)
     logging.info("Test string is: " + str(teststring))
     result = json.dumps({'htmlVal': teststring})
