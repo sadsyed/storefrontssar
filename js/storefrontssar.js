@@ -34,7 +34,7 @@
 
         if(myMerch.length == 0) {
           $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="0" class="active"></li>');
-          $('#articleslides').prepend('<div class="item active"><img class="slide-image" src="Merchandise coming soon..." alt=""></div>');
+          $('#articleslides').prepend('<div class="item active"><img class="slide-image" src="http://lh6.ggpht.com/VtzdDTxA6x5tVRGQDelP9B06vNcIx1O5NYYWzHGUxTirHrsgQxuC-VgDLAxpNMb7xwgGowSlSRxY25VhbH4KCVc8rxw" alt=""></div>');
         }
 
 
@@ -55,7 +55,7 @@
                   $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
                   $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
                 }
-                $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+                $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
             });
         }
@@ -96,6 +96,18 @@ $(document).ready(function() {
     }
   });
 });
+
+$(document).delegate('.btn-primary', 'click', function()
+{
+    var thisItem = this.id;
+    console.log("The id is: " + this.id);
+    var jsonData = {itemName: this.id};
+    $.ajax({type:"POST", dataType: "json", url: "/EmailPage", success:function(returndata) {
+      console.log("Got success");
+    }, error: function(jqXHR, textStatus, errorThrown) {
+      console.log("There was an error :" + textStatus + " " + errorThrown);
+    }, data: jsonData });
+});   
 
 $(document).delegate('#Coats', 'click', function()
 {

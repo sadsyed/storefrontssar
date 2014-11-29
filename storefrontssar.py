@@ -2,6 +2,7 @@
 import cloudstorage as gcs
 from google.appengine.api import users
 from google.appengine.api import urlfetch
+from google.appengine.api import mail
 from google.appengine.api import files, images
 from google.appengine.ext import db
 from google.appengine.ext import blobstore, deferred
@@ -137,6 +138,14 @@ class BaseHandler(webapp2.RequestHandler):
     params['user'] = user
     path = os.path.join(os.path.dirname(__file__), 'views', view_filename)
     self.response.out.write(template.render(path, params))
+
+  def render_template2(self, view_filename, params=None):
+    if not params:
+      params = {}
+    user = self.user_info
+    params['user'] = user
+    path = os.path.join(os.path.dirname(__file__), 'views', view_filename)
+    return template.render(path, params)
 
   def display_message(self, message):
     """Utility function to display a template with a simple message."""
@@ -680,7 +689,7 @@ class ConfigureAccount(BaseHandler):
         result = json.dumps({'errorcode':9}) # Error code 9: Can't configure user because user not found.
     except:
       pass
-    self.response.write(result)
+    self.redirect("/")
 
 class GetSaleCategories(webapp2.RequestHandler):
     def post(self):
@@ -784,6 +793,51 @@ class GetCategory(webapp2.RequestHandler):
       result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
     self.response.write(result)
 
+class SendEmail(BaseHandler):
+  @user_required
+  def post(self):
+    #get json data from post for sender email, item, and content
+    #get item for query
+    #query to find item and pull email
+    #user = self.user
+    #logging.info("User is: " + str(user))
+    #email = user.email_address
+    #logging.info("User email: " + email)
+    #present_query = smartClosetUser.query(smartClosetUser.userEmail == email)
+    #logging.info('Created query')
+    #try:
+    #  existsuser = present_query.get()
+    #  logging.info("Query returned: " + str(existsuser))
+    emailTargetAddress = "amy_hindman@yahoo.com"
+    emailSenderAddress = "smart.closet.service@gmail.com"
+    itemName = "Test item"
+    content = "This is a test email."
+
+    message = mail.EmailMessage(sender=emailSenderAddress, subject="Smart Closet Item Inquiry: " + itemName)
+
+    if not mail.is_email_valid(emailTargetAddress):
+      logging.info("The email is not valid.")
+      self.response.out.write("Email address is not valid.")
+
+    message.to = emailTargetAddress
+    message.body = """%s""" %(content)
+    message.send()
+    logging.info("Message sent")
+    self.response.out.write("Message sent successfully!")
+
+class EmailPage(BaseHandler):
+  @user_required
+  def post(self):
+    logging.info("Request is: " + str(self.request))
+    data = self.request.get('itemName')
+    logging.info('Json data sent to this function: ' + str(data))
+    params = {'itemName': data}
+    teststring = self.render_template2('email.html', params)
+    logging.info("Test string is: " + str(teststring))
+    result = json.dumps({'htmlVal': teststring})
+    self.response.write(result)
+
+
 class GetMerch(webapp2.RequestHandler):
     def get(self):
       logging.info('Returning merchandise.')
@@ -830,6 +884,8 @@ app = webapp2.WSGIApplication([
     ('/UseArticle', UseArticle),
     ('/UpdateArticle', UpdateArticle),
     ('/ReadArticle', ReadArticle),
+    ('/SendEmail', SendEmail),
+    ('/EmailPage', EmailPage),
     ('/CreateArticlePage', CreateArticlePage),
     ('/GetCategories', GetCategories),
     ('/GetSaleCategories', GetSaleCategories),

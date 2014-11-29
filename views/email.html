@@ -1,0 +1,20 @@
+{% extends "main.html" %}
+
+{% block maincontent %}
+
+
+<div class="container">
+	<H3> Contact Seller For Item {{itemname}}</H3>
+	Your contact information (Email) will be automatically provided to the seller.
+<div class="row">
+ <div>
+ 	<FORM class="form_container" action="/SendEmail" method="post">
+    Message:	<br><br><INPUT type="textarea" name="pin" padding-left:5em rows="10" cols="50"><BR>
+    <br>
+    <INPUT class="buttons" type="submit" value="Send Email"> 
+ </FORM>
+</div>
+</div>
+</div>
+
+{% endblock %}
