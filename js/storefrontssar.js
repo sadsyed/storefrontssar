@@ -55,7 +55,7 @@
                   $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
                   $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
                 }
-                $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
+                $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
             });
         }
@@ -91,7 +91,7 @@ $(document).ready(function() {
               $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
               $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
             }
-            $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+            $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
         });
     }
@@ -105,7 +105,9 @@ $(document).delegate('.btn-primary', 'click', function()
     var jsonData = {itemName: this.id};
     $.ajax({type:"POST", dataType: "json", url: "/EmailPage", success:function(returndata) {
       console.log("Got success");
-      $('html').html(returndata.htmlVal);
+      $('#content2').empty();
+      $('#content3').empty();
+      $('.content').html(returndata.htmlVal);
     }, error: function(jqXHR, textStatus, errorThrown) {
       console.log("There was an error.")
       $('#Error').show();
@@ -149,7 +151,7 @@ $(document).delegate('#Coats', 'click', function()
             $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
             $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
           }
-          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
       });
   }
@@ -192,7 +194,7 @@ $(document).delegate('#Dresses', 'click', function()
             $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
             $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
           }
-          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
       });
   }
@@ -235,7 +237,7 @@ $(document).delegate('#Gloves', 'click', function()
             $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
             $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
           }
-          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
       });
   }
@@ -278,7 +280,7 @@ $(document).delegate('#Hats', 'click', function()
             $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
             $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
           }
-          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
       });
   }
@@ -322,7 +324,7 @@ $(document).delegate('#Pants', 'click', function()
             $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
             $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
           }
-          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
       });
   }
@@ -365,7 +367,7 @@ $(document).delegate('#Scarves', 'click', function()
             $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
             $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
           }
-          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
       });
   }
@@ -408,7 +410,7 @@ $(document).delegate('#Shirts', 'click', function()
             $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
             $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
           }
-          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
       });
   }
@@ -451,7 +453,7 @@ $(document).delegate('#Shoes', 'click', function()
             $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
             $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
           }
-          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
       });
   }
@@ -497,7 +499,7 @@ $(document).delegate('#Shorts', 'click', function()
             $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
             $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
           }
-          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
       });
   }
@@ -541,7 +543,7 @@ $(document).delegate('#Skirts', 'click', function()
             $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
             $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
           }
-          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
       });
   }
@@ -584,7 +586,7 @@ $(document).delegate('#Sweaters', 'click', function()
             $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
             $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
           }
-          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#">' + productName + '</a></h4><p>' + productDescription + '</p></div></div></div>');
+          $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
 
       });
   }

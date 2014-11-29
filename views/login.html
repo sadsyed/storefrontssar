@@ -1,22 +1,25 @@
 {% extends "main.html" %}
 
 {% block maincontent %}
-
-<h1>Login</h1>
+<div class="container">
+	<h3>Login</h3>
 
 {% if failed %}
 
-    <strong>Login failed!</strong> Check your credentials and try again.
+    <div class="row"><div><strong>Login failed!</strong> Check your credentials and try again.</div></div>
 
-{% endif %}
-
-<form class="form" action= "/login" method="POST">
-	Username:    <br><input type="text" value="{{ username }}" name="username" padding-left:5em /><br>
-	Password:    <br><input type="password" name="password" padding-left:5em /><br><br>
-	<button type="submit" class="btn">Login</button>
-</form>
-
-<a href="/forgot">Forgot password</a>
+{% endif %} 
+    <div class="row">
+      <form class="form_container" action= "/login" method="POST">
+	    Username:    <br><input type="text" value="{{ username }}" name="username" padding-left:10em /><br>
+	    Password:    <br><input type="password" name="password" padding-left:10em /><br><br>
+	    <button type="submit" class="btn">Login</button>
+      </form>
+      <a href="/forgot">Forgot password</a>
+    </div>
+  </div>
+</div>
 
 
 {% endblock %}
+

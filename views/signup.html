@@ -3,15 +3,21 @@
 {% block title %}Register a new user{% endblock %}
 
 {% block maincontent %}
-
-<h1>Register a new user</h1>
-<form action="/signup" method="POST">
-    Username:    <br><input type="text" name="username" padding-left:5em /><br>
-    Email address:  <br><input type="text" name="email" padding-left:5em/><br>
-    Password:     <br><input type="password" name="password" padding-left:5em /><br>
-    Name: <br><input type="text" name="name" padding-left:5em /><br>
-    Last Name:<br><input type="text" name="lastname" padding-left:5em /><br><br>
-    <input type="submit" value="Create user" />
-</form>
+  <div class="container">
+	<h3>Register a new user</h3>
+	<div class="row">
+		<div>
+			<form action="/signup" method="POST">
+			    Username:    <br><input type="text" name="username" padding-left:10em /><br>
+			    Email address:  <br><input type="text" name="email" padding-left:10em/><br>
+			    Password:     <br><input type="password" name="password" padding-left:10em /><br>
+			    Name: <br><input type="text" name="name" padding-left:10em /><br>
+			    Last Name:<br><input type="text" name="lastname" padding-left:10em /><br><br>
+			    <input type="submit" value="Create user" />
+			</form>
+		</div>
+	</div>
+</div>
 
 {% endblock %}
+
