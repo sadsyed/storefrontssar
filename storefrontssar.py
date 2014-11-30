@@ -207,9 +207,24 @@ class SignupHandler(BaseHandler):
     verification_url = self.uri_for('verification', type='v', user_id=user_id,
       signup_token=token, _full=True)
 
-    msg = 'Verify account:  <a href="{url}">{url}</a>'
+    logging.info("User is: " + str(user_name))
+    emailSenderAddress = "smart.closet.service@gmail.com"
+    logging.info("set email address")
+    content = "Verify your smart closet account at: " + verification_url
+    logging.info('set content')
 
-    self.display_message(msg.format(url=verification_url))
+    message = mail.EmailMessage(sender=emailSenderAddress, subject="Smart Closet Email Verification ")
+
+    if not mail.is_email_valid(email):
+      logging.info("The email is not valid.")
+      self.response.out.write("Email address is not valid.")
+
+    message.to = email
+    message.body = """%s""" %(content)
+    message.send()
+    
+    msg = "Verification message has been sent to: " + email
+    self.display_message(msg)
 
 class ForgotPasswordHandler(BaseHandler):
   def get(self):
