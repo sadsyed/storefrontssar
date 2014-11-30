@@ -878,6 +878,7 @@ class SearchArticles(webapp2.RequestHandler):
                     if filteredarticle.articleowner == thisemail:
                       templist.append(filteredarticle)
                       logging.info('found a list match')
+                allarticlesbyused = templist
               else:
                 logging.info('Count is zero')
             else:
@@ -887,9 +888,10 @@ class SearchArticles(webapp2.RequestHandler):
                   if filteredarticle.articleowner == email:
                     templist.append(filteredarticle)
                     logging.info("found an email match")
+                allarticlesbyused = templist
               else:
                 logging.info('Email is empty string')
-            allarticlesbyused = templist
+            
           except:
             logging.info('didnt get an email')
           searchResultArticles = {}
@@ -927,6 +929,7 @@ class SearchArticles(webapp2.RequestHandler):
                     if filteredarticle.articleowner == thisemail:
                       templist.append(filteredarticle)
                       logging.info('found a list match')
+                allarticlesbyused = templist
               else:
                 logging.info('Count is zero')
             else:
@@ -936,10 +939,10 @@ class SearchArticles(webapp2.RequestHandler):
                   if filteredarticle.articleowner == email:
                     templist.append(filteredarticle)
                     logging.info("found an email match")
+                allarticlesbyused = templist
               else:
                 logging.info('Email is empty string')
             logging.info('updating all articles by used is templist')
-            allarticlesbyused = templist
           except:
             logging.info('didnt get an email')
           searchResultArticles = {}
@@ -982,6 +985,7 @@ class SearchArticles(webapp2.RequestHandler):
                     if filteredarticle.articleowner == thisemail:
                       templist.append(filteredarticle)
                       logging.info('found a list match')
+                  allarticlesbyused = templist
               else:
                 logging.info('Count is zero')
             else:
@@ -991,10 +995,10 @@ class SearchArticles(webapp2.RequestHandler):
                   if filteredarticle.articleowner == email:
                     templist.append(filteredarticle)
                     logging.info("found an email match")
+                allarticlesbyused = templist
               else:
                 logging.info('Email is empty string')
             logging.info('updating all articles by used is templist')
-            allarticlesbyused = templist
           except:
             logging.info('didnt get an email')
           searchResultArticles = {}
