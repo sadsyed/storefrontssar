@@ -212,8 +212,25 @@ class SignupHandlerAndroid(BaseHandler):
 
         verification_url = self.uri_for('verification', type='v', user_id=user_id,
           signup_token=token, _full=True)
+
+
+        logging.info("User is: " + str(user_name))
+        emailSenderAddress = "smart.closet.service@gmail.com"
+        logging.info("set email address")
+        content = "Verify your smart closet account at: " + verification_url
+        logging.info('set content')
+
+        message = mail.EmailMessage(sender=emailSenderAddress, subject="Smart Closet Email Verification ")
+
+        if not mail.is_email_valid(email):
+          logging.info("The email is not valid.")
+          self.response.out.write("Email address is not valid.")
+
+        message.to = email
+        message.body = """%s""" %(content)
+        message.send()
         logging.info("Verification url: " + verification_url)
-        result = json.dumps({'verify_url':verification_url,'errorcode':0})
+        result = json.dumps({'errorcode':0})
     except:
       result = json.dumps({'errorcode':1})
       logging.info('Create Profile failed with errorcode: ' + str(result))
@@ -255,9 +272,25 @@ class SignupHandler(BaseHandler):
       verification_url = self.uri_for('verification', type='v', user_id=user_id,
         signup_token=token, _full=True)
 
-      msg = 'Verify account:  <a href="{url}">{url}</a>'
+      logging.info("User is: " + str(user_name))
+      emailSenderAddress = "smart.closet.service@gmail.com"
+      logging.info("set email address")
+      content = "Verify your smart closet account at: " + verification_url
+      logging.info('set content')
 
-      self.display_message(msg.format(url=verification_url))
+      message = mail.EmailMessage(sender=emailSenderAddress, subject="Smart Closet Email Verification ")
+
+      if not mail.is_email_valid(email):
+        logging.info("The email is not valid.")
+        self.response.out.write("Email address is not valid.")
+
+      message.to = email
+      message.body = """%s""" %(content)
+      message.send()
+    
+    msg = "Verification message has been sent to: " + email
+    self.display_message(msg)
+
 
 class ForgotPasswordHandler(BaseHandler):
   def get(self):
@@ -458,58 +491,58 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
 
 
     def handle_android_upload(self):
-        try:
-            articleid = self.request.headers['articleid']
-            logging.info('Article ID is: ' + str(articleid))
-            logging.info('Check if article exists')
-            present_query = myArticle.query(myArticle.articleid  == articleid)
-            existsarticle = present_query.get()
-            comments = ""
-            if not existsarticle == None:
-              imageid = str(uuid.uuid1())
-              bucket_name = os.environ.get('BUCKET_NAME', app_identity.get_default_gcs_bucket_name())
-              logging.info("My bucket name is: " + str(bucket_name))
-              bucket = '/' + bucket_name
-              filename = bucket + '/' + articleid + '/' + imageid
-              try:
-                myimagefile = self.request.get('imageFile')
-              except:
-                logging.info("Imagefile not retrieved from self.request")
-              result = {}
-              creationdate = str(datetime.datetime.now().date())
-              logging.info("starting to write file to store")
-            # Create a GCS file with GCS client.
-              with gcs.open(filename, 'w') as f:
-                f.write(myimagefile)
-            # Blobstore API requires extra /gs to distinguish against blobstore files.
-              blobstore_filename = '/gs' + filename
-              blob_key = blobstore.create_gs_key(blobstore_filename)
-              logging.info("Trying to get url for blob key: " + str(blob_key))
-              try:
-                result['url'] = images.get_serving_url(
-                    blob_key,
-                )
-              except:
-                logging.info("Could not get serving url")
-                result['url'] = ""
-              logging.info("Result url" + str(result['url']))
-              myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
-              logging.info("Got key")
-              myimage.imageid = imageid
-              logging.info('after image id')
-              myimage.imagefileurl = result['url']
-              logging.info('after url')
-              myimage.imagecreationdate = creationdate
-              logging.info('after creation date')
-              myimage.imagearticleid = articleid
-              myimage.put()
-              logging.info("The image url being assigned is: " + myimage.imagefileurl)
-              existsarticle.articleimageurl = myimage.imagefileurl
-              existsarticle.put()
-        except:
-            logging.info("exception uploading files")
-        logging.info("Result of image upload is: " + str(result))
-        return result
+      try:
+          articleid = self.request.headers['articleid']
+          logging.info('Article ID is: ' + str(articleid))
+          logging.info('Check if article exists')
+          present_query = myArticle.query(myArticle.articleid  == articleid)
+          existsarticle = present_query.get()
+          comments = ""
+          if not existsarticle == None:
+            imageid = str(uuid.uuid1())
+            bucket_name = os.environ.get('BUCKET_NAME', app_identity.get_default_gcs_bucket_name())
+            logging.info("My bucket name is: " + str(bucket_name))
+            bucket = '/' + bucket_name
+            filename = bucket + '/' + articleid + '/' + imageid
+            try:
+              myimagefile = self.request.get('imageFile')
+            except:
+              logging.info("Imagefile not retrieved from self.request")
+            result = {}
+            creationdate = str(datetime.datetime.now().date())
+            logging.info("starting to write file to store")
+          # Create a GCS file with GCS client.
+            with gcs.open(filename, 'w') as f:
+              f.write(myimagefile)
+          # Blobstore API requires extra /gs to distinguish against blobstore files.
+            blobstore_filename = '/gs' + filename
+            blob_key = blobstore.create_gs_key(blobstore_filename)
+            logging.info("Trying to get url for blob key: " + str(blob_key))
+            try:
+              result['url'] = images.get_serving_url(
+                  blob_key,
+              )
+            except:
+              logging.info("Could not get serving url")
+              result['url'] = ""
+            logging.info("Result url" + str(result['url']))
+            myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+            logging.info("Got key")
+            myimage.imageid = imageid
+            logging.info('after image id')
+            myimage.imagefileurl = result['url']
+            logging.info('after url')
+            myimage.imagecreationdate = creationdate
+            logging.info('after creation date')
+            myimage.imagearticleid = articleid
+            myimage.put()
+            logging.info("The image url being assigned is: " + myimage.imagefileurl)
+            existsarticle.articleimageurl = myimage.imagefileurl
+            existsarticle.put()
+      except:
+          logging.info("exception uploading files")
+      logging.info("Result of image upload is: " + str(result))
+      return result
 
     def options(self):
         pass
@@ -892,6 +925,240 @@ class EmailPage(BaseHandler):
     result = json.dumps({'htmlVal': teststring})
     self.response.write(result)
 
+class SearchArticles(webapp2.RequestHandler):
+
+    def post(self):
+      payload = {}
+      try:
+        data = json.loads(self.request.body)
+        logging.info('This is what Im looking for: ' + str(data))
+        searchFilter = data['filterString'].lower()
+        logging.info('Filter: ' + str(searchFilter))
+        email = ""
+        try:
+          email = data['email']
+          logging.info('email is: ' + str(email))        
+        except:
+          logging.info('didnt get email')
+        filterType = data['filterType']
+        logging.info("Got filter type")
+        if filterType == 'string':
+          logging.info('The filter type is string')
+          allarticle_query = myArticle.query().order(myArticle.articletimesused)
+          allarticlesbyused = allarticle_query.fetch()
+          logging.info("Query results: " + str(allarticlesbyused))
+          try:
+            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+            templist = list()
+            if type(email) == list:
+              logging.info('email type is list')
+              if len(email) > 0 :
+                logging.info('Email list is greater than 0')
+                for thisemail in email:
+                  for filteredarticle in allarticlesbyused:
+                    if filteredarticle.articleowner == thisemail:
+                      templist.append(filteredarticle)
+                      logging.info('found a list match')
+                allarticlesbyused = templist
+              else:
+                logging.info('Count is zero')
+            else:
+              logging.info('email type is str')
+              if not email == "":               
+                for filteredarticle in allarticlesbyused:
+                  if filteredarticle.articleowner == email:
+                    templist.append(filteredarticle)
+                    logging.info("found an email match")
+                allarticlesbyused = templist
+              else:
+                logging.info('Email is empty string')
+            
+          except:
+            logging.info('didnt get an email')
+          searchResultArticles = {}
+          searchResultList = list()
+          for searchArticle in allarticlesbyused:
+            articletype = searchArticle.articletype.lower()
+            articlename = searchArticle.articlename.lower()
+            logging.info("Type is: " + str(articletype) + " and name is: " + str(articlename))
+            if not searchFilter == "":
+              if searchFilter in articletype:
+                searchResultArticles[searchArticle.articlename] = searchArticle
+
+              if searchFilter in articlename:
+                searchResultArticles[searchArticle.articlename] = searchArticle
+
+              if searchFilter in searchArticle.articletags:
+                searchResultArticles[searchArticle.articlename] = searchArticle
+
+        elif filterType == 'usagefilter':
+          searchdate = datetime.datetime.strptime(searchFilter, "%Y-%m-%d").date()
+          logging.info('The filter type is usagefilter')
+          logging.info('searchdate is: ' + str(searchdate))
+          allarticle_query = myArticle.query().order(myArticle.articletimesused)
+          allarticlesbyused = allarticle_query.fetch()
+          logging.info("Query results in ok to sell: " + str(allarticlesbyused))
+          try:
+            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+            templist = list()
+            if type(email) == list:
+              logging.info('email type is list')
+              if len(email) > 0 :
+                logging.info('Email list is greater than 0')
+                for thisemail in email:
+                  for filteredarticle in allarticlesbyused:
+                    if filteredarticle.articleowner == thisemail:
+                      templist.append(filteredarticle)
+                      logging.info('found a list match')
+                allarticlesbyused = templist
+              else:
+                logging.info('Count is zero')
+            else:
+              logging.info('email type is str')
+              if not email == "":               
+                for filteredarticle in allarticlesbyused:
+                  if filteredarticle.articleowner == email:
+                    templist.append(filteredarticle)
+                    logging.info("found an email match")
+                allarticlesbyused = templist
+              else:
+                logging.info('Email is empty string')
+            logging.info('updating all articles by used is templist')
+          except:
+            logging.info('didnt get an email')
+          searchResultArticles = {}
+          searchResultList = list()
+          logging.info('looping through all articles')
+          for searchArticle in allarticlesbyused:
+            if not searchFilter == "":
+              logging.info('search filter is not empty string')
+              lastusedlist = searchArticle.articlelastused
+              logging.info('last used list is: ' + str(lastusedlist))
+              for useddate in lastusedlist:
+                logging.info("This use date is: " + str(useddate))
+                articledate = datetime.datetime.strptime(str(useddate), "%Y-%m-%d").date()
+                logging.info('changed to date: ' + str(articledate))
+                logging.info('searchdate is: ' + str(searchdate))
+                if articledate >= searchdate:
+                  logging.info("Found an article greater than search date")
+                  searchResultArticles[searchArticle.articlename] = searchArticle
+                else:
+                  logging.info('article not used recent enought')
+          logging.info("searchResults are:  " + str(searchResultArticles))
+        elif filterType == 'neverused':
+          logging.info('The filter is neverused')  
+          allarticle_query = myArticle.query().order(myArticle.articletimesused)
+          allarticlesbyused = allarticle_query.fetch()
+          logging.info("Query results in ok to sell: " + str(allarticlesbyused))
+          try:
+            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+            templist = list()
+            if type(email) == list:
+              logging.info('email type is list')
+              if len(email) > 0 :
+                logging.info('Email list is greater than 0')
+                for thisemail in email:
+                  for filteredarticle in allarticlesbyused:
+                    if filteredarticle.articleowner == thisemail:
+                      templist.append(filteredarticle)
+                      logging.info('found a list match')
+                allarticlesbyused = templist
+              else:
+                logging.info('Count is zero')
+            else:
+              logging.info('email type is str')
+              if not email == "":               
+                for filteredarticle in allarticlesbyused:
+                  if filteredarticle.articleowner == email:
+                    templist.append(filteredarticle)
+                    logging.info("found an email match")
+                allarticlesbyused = templist
+              else:
+                logging.info('Email is empty string')
+            logging.info('updating all articles by used is templist')
+          except:
+            logging.info('didnt get an email')
+          searchResultArticles = {}
+          searchResultList = list()
+          logging.info('looping through all articles')
+          for searchArticle in allarticlesbyused:
+            timesused = str(searchArticle.articletimesused)
+            logging.info("timesused is: " + timesused)
+            if searchFilter == "true":
+              logging.info("looking for items never used")
+              if timesused == "0":
+                searchResultArticles[searchArticle.articlename] = searchArticle
+                logging.info('found an item neverused.')
+            elif searchFilter == "":
+              pass
+            else:
+              logging.info("looking for items sometimes used")
+              if timesused == "0":
+                logging.info("timesued is zeron")
+              elif timesused == None:
+                pass
+              else:
+                searchResultArticles[searchArticle.articlename] = searchArticle
+                logging.info('found an article used at least once.')
+
+        elif filterType == 'oktosell':
+          logging.info('The filter is oktosell')  
+          allarticle_query = myArticle.query().order(myArticle.articletimesused)
+          allarticlesbyused = allarticle_query.fetch()
+          logging.info("Query results in ok to sell: " + str(allarticlesbyused))
+          try:
+            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+            templist = list()
+            if type(email) == list:
+              logging.info('email type is list')
+              if len(email) > 0 :
+                logging.info('Email list is greater than 0')
+                for thisemail in email:
+                  for filteredarticle in allarticlesbyused:
+                    if filteredarticle.articleowner == thisemail:
+                      templist.append(filteredarticle)
+                      logging.info('found a list match')
+                  allarticlesbyused = templist
+              else:
+                logging.info('Count is zero')
+            else:
+              logging.info('email type is str')
+              if not email == "":               
+                for filteredarticle in allarticlesbyused:
+                  if filteredarticle.articleowner == email:
+                    templist.append(filteredarticle)
+                    logging.info("found an email match")
+                allarticlesbyused = templist
+              else:
+                logging.info('Email is empty string')
+            logging.info('updating all articles by used is templist')
+          except:
+            logging.info('didnt get an email')
+          searchResultArticles = {}
+          searchResultList = list()
+          logging.info('looping through all articles')
+          for searchArticle in allarticlesbyused:
+            oktosell = str(searchArticle.articleoktosell)
+            oktosell = oktosell.lower()
+            if oktosell == searchFilter:
+              searchResultArticles[searchArticle.articlename] = searchArticle
+              logging.info('found an item ok to sell.')
+
+        logging.info("searchResultArticles")    
+        for thisArticle in searchResultArticles:
+          existsarticle = searchResultArticles[thisArticle]
+          logging.info("Adding to list article: " + str(existsarticle))
+          appendArticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+          logging.info('created append article ' + str(appendArticle))
+          searchResultList.append(appendArticle)
+          logging.info('appended')
+        payload = {'articleList':searchResultList}
+        logging.info("SearchResultList: " + str(searchResultList))
+      except:
+        payload = {'errorcode':6}
+      result = json.dumps(payload)
+      self.response.write(result)
+
 
 class GetMerch(webapp2.RequestHandler):
     def get(self):
@@ -975,6 +1242,7 @@ app = webapp2.WSGIApplication([
     ('/ReadArticle', ReadArticle),
     ('/SendEmail', SendEmail),
     ('/EmailPage', EmailPage),
+    ('/SearchArticles', SearchArticles),
     ('/CreateArticlePage', CreateArticlePage),
     ('/GetCategories', GetCategories),
     ('/GetSaleCategories', GetSaleCategories),
