@@ -1,18 +1,22 @@
 {% extends "main.html" %}
 
 {% block maincontent %}
-
-<h3>Recover password</h3>
-
-<p>Forgot your password? Click the link below to receive a link to recover your password.</p>
+<div class="container">
+  <h3>Recover password</h3><br>
+<div class="row">
+ <div>
+   <p>Forgot your password? Enter your user id and receive a link to reset your password.</p><br>
 
 {% if not_found %}
     <strong>Not found!</strong> We could not found any user with the given username.
 {% endif %} 
 
-<form class="form" action= "/forgot" method="POST">
-	<input type="text" value="{{ username }}" name="username"/>
-	<input class="btn btn-primary" type="submit" value="Send password reset link"/>
-</form>
+	<form class="form" action= "/forgot" method="POST">
+		<input type="text" value="{{ username }}" name="username"/>
+		<input class="btn btn-primary" type="submit" value="Send password reset link"/>
+	</form>
+</div>
+</div>
+</div>
 
 {% endblock %}

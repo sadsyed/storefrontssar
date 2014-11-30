@@ -245,9 +245,26 @@ class ForgotPasswordHandler(BaseHandler):
     verification_url = self.uri_for('verification', type='p', user_id=user_id,
       signup_token=token, _full=True)
 
-    msg = 'Reset password link:  <a href="{url}">{url}</a>'
+    #msg = 'Reset password link:  <a href="{url}">{url}</a>'
 
-    self.display_message(msg.format(url=verification_url))
+    email = user.email_address
+    logging.info('got target email')
+    emailSenderAddress = "smart.closet.service@gmail.com"
+    logging.info("set email address")
+    content = "Reset your smart closet password at: " + verification_url
+    logging.info('set content')
+
+    message = mail.EmailMessage(sender=emailSenderAddress, subject="Smart Closet Password Reset Notification ")
+
+    if not mail.is_email_valid(email):
+      logging.info("The email is not valid.")
+      self.response.out.write("Email address is not valid.")
+
+    message.to = email
+    message.body = """%s""" %(content)
+    message.send()
+
+    self.display_message("Reset password link sent to: " + str(email)) 
   
   def _serve_page(self, not_found=False):
     username = self.request.get('username')
