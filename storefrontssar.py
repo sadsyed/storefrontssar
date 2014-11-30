@@ -910,8 +910,60 @@ class SearchArticles(webapp2.RequestHandler):
               if searchFilter in searchArticle.articletags:
                 searchResultArticles[searchArticle.articlename] = searchArticle
 
-        elif filterType == 'lastuseddate':
-          logging.info('The filter type is lastuseddate')
+        elif filterType == 'usagefilter':
+          searchdate = datetime.datetime.strptime(searchFilter, "%Y-%m-%d").date()
+          logging.info('The filter type is usagefilter')
+          logging.info('searchdate is: ' + str(searchdate))
+          allarticle_query = myArticle.query().order(myArticle.articletimesused)
+          allarticlesbyused = allarticle_query.fetch()
+          logging.info("Query results in ok to sell: " + str(allarticlesbyused))
+          try:
+            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+            templist = list()
+            if type(email) == list:
+              logging.info('email type is list')
+              if len(email) > 0 :
+                logging.info('Email list is greater than 0')
+                for thisemail in email:
+                  for filteredarticle in allarticlesbyused:
+                    if filteredarticle.articleowner == thisemail:
+                      templist.append(filteredarticle)
+                      logging.info('found a list match')
+                allarticlesbyused = templist
+              else:
+                logging.info('Count is zero')
+            else:
+              logging.info('email type is str')
+              if not email == "":               
+                for filteredarticle in allarticlesbyused:
+                  if filteredarticle.articleowner == email:
+                    templist.append(filteredarticle)
+                    logging.info("found an email match")
+                allarticlesbyused = templist
+              else:
+                logging.info('Email is empty string')
+            logging.info('updating all articles by used is templist')
+          except:
+            logging.info('didnt get an email')
+          searchResultArticles = {}
+          searchResultList = list()
+          logging.info('looping through all articles')
+          for searchArticle in allarticlesbyused:
+            if not searchFilter == "":
+              logging.info('search filter is not empty string')
+              lastusedlist = searchArticle.articlelastused
+              logging.info('last used list is: ' + str(lastusedlist))
+              for useddate in lastusedlist:
+                logging.info("This use date is: " + str(useddate))
+                articledate = datetime.datetime.strptime(str(useddate), "%Y-%m-%d").date()
+                logging.info('changed to date: ' + str(articledate))
+                logging.info('searchdate is: ' + str(searchdate))
+                if articledate >= searchdate:
+                  logging.info("Found an article greater than search date")
+                  searchResultArticles[searchArticle.articlename] = searchArticle
+                else:
+                  logging.info('article not used recent enought')
+          logging.info("searchResults are:  " + str(searchResultArticles))
         elif filterType == 'neverused':
           logging.info('The filter is neverused')  
           allarticle_query = myArticle.query().order(myArticle.articletimesused)
