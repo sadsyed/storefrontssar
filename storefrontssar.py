@@ -844,6 +844,52 @@ class EmailPage(BaseHandler):
     result = json.dumps({'htmlVal': teststring})
     self.response.write(result)
 
+class SearchArticles(webapp2.RequestHandler):
+    def post(self):
+      payload = {}
+      try:
+        data = json.loads(self.request.body)
+        logging.info('This is what Im looking for: ' + str(data))
+         
+        searchFilter = data['filterString'].lower()
+        logging.info('Filter: ' + str(searchFilter))
+
+        allarticle_query = myArticle.query().order(myArticle.articletimesused)
+        allarticlesbyused = allarticle_query.fetch()
+        logging.info("Query results: " + str(allarticlesbyused))
+        searchResultArticles = {}
+        searchResultList = list()
+        for searchArticle in allarticlesbyused:
+
+          articletype = searchArticle.articletype.lower()
+          articlename = searchArticle.articlename.lower()
+          logging.info("Type is: " + str(articletype) + " and name is: " + str(articlename))
+
+          if searchArticle.articleoktosell == True:
+            if searchFilter in articletype:
+              searchResultArticles[searchArticle.articlename] = searchArticle
+
+            if searchFilter in articlename:
+              searchResultArticles[searchArticle.articlename] = searchArticle
+
+            if searchFilter in searchArticle.articletags:
+              searchResultArticles[searchArticle.articlename] = searchArticle
+
+        logging.info("searchResultArticles")    
+        for thisArticle in searchResultArticles:
+          existsarticle = searchResultArticles[thisArticle]
+          logging.info("Adding to list article: " + str(existsarticle))
+          appendArticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+          logging.info('created append article ' + str(appendArticle))
+          searchResultList.append(appendArticle)
+          logging.info('appended')
+        payload = {'articleList':searchResultList}
+        logging.info("SearchResultList: " + str(searchResultList))
+      except:
+        payload = {'errorcode':6}
+      result = json.dumps(payload)
+      self.response.write(result)
+
 
 class GetMerch(webapp2.RequestHandler):
     def get(self):
@@ -893,6 +939,7 @@ app = webapp2.WSGIApplication([
     ('/ReadArticle', ReadArticle),
     ('/SendEmail', SendEmail),
     ('/EmailPage', EmailPage),
+    ('/SearchArticles', SearchArticles),
     ('/CreateArticlePage', CreateArticlePage),
     ('/GetCategories', GetCategories),
     ('/GetSaleCategories', GetSaleCategories),
