@@ -846,25 +846,6 @@ class EmailPage(BaseHandler):
 
 class SearchArticles(webapp2.RequestHandler):
 
-    def reduceByEmail(self,articlelist,email):
-      templist = list()
-      logging.info('trying to use email')
-      if type(email) == str and not email == "":
-        logging.info('email type is str')
-        for filteredarticle in articlelist:
-          if filteredarticle.articleowner == email:
-            templist.append(filteredarticle)
-            logging.info("found an email match")
-        return templist
-      elif type(email) == list and not email.count() > 0 :
-        logging.info('email type is list')
-        for thisemail in email:
-          for filteredarticle in articlelist:
-            if filteredarticle.articleowner == thisemail:
-              templist.append(filteredarticle)
-              logging.info('found a list match')
-        return templist
-
     def post(self):
       payload = {}
       try:
@@ -872,8 +853,10 @@ class SearchArticles(webapp2.RequestHandler):
         logging.info('This is what Im looking for: ' + str(data))
         searchFilter = data['filterString'].lower()
         logging.info('Filter: ' + str(searchFilter))
+        email = ""
         try:
-          email = data['email']        
+          email = data['email']
+          logging.info('email is: ' + str(email))        
         except:
           logging.info('didnt get email')
         filterType = data['filterType']
@@ -884,7 +867,29 @@ class SearchArticles(webapp2.RequestHandler):
           allarticlesbyused = allarticle_query.fetch()
           logging.info("Query results: " + str(allarticlesbyused))
           try:
-            allarticlesbyused = reduceByEmail(self,allarticlesbyused,email)
+            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+            templist = list()
+            if type(email) == list:
+              logging.info('email type is list')
+              if len(email) > 0 :
+                logging.info('Email list is greater than 0')
+                for thisemail in email:
+                  for filteredarticle in allarticlesbyused:
+                    if filteredarticle.articleowner == thisemail:
+                      templist.append(filteredarticle)
+                      logging.info('found a list match')
+              else:
+                logging.info('Count is zero')
+            else:
+              logging.info('email type is str')
+              if not email == "":               
+                for filteredarticle in allarticlesbyused:
+                  if filteredarticle.articleowner == email:
+                    templist.append(filteredarticle)
+                    logging.info("found an email match")
+              else:
+                logging.info('Email is empty string')
+            allarticlesbyused = templist
           except:
             logging.info('didnt get an email')
           searchResultArticles = {}
@@ -893,15 +898,15 @@ class SearchArticles(webapp2.RequestHandler):
             articletype = searchArticle.articletype.lower()
             articlename = searchArticle.articlename.lower()
             logging.info("Type is: " + str(articletype) + " and name is: " + str(articlename))
+            if not searchFilter == "":
+              if searchFilter in articletype:
+                searchResultArticles[searchArticle.articlename] = searchArticle
 
-            if searchFilter in articletype:
-              searchResultArticles[searchArticle.articlename] = searchArticle
+              if searchFilter in articlename:
+                searchResultArticles[searchArticle.articlename] = searchArticle
 
-            if searchFilter in articlename:
-              searchResultArticles[searchArticle.articlename] = searchArticle
-
-            if searchFilter in searchArticle.articletags:
-              searchResultArticles[searchArticle.articlename] = searchArticle
+              if searchFilter in searchArticle.articletags:
+                searchResultArticles[searchArticle.articlename] = searchArticle
 
         elif filterType == 'lastuseddate':
           logging.info('The filter type is lastuseddate')
@@ -909,6 +914,45 @@ class SearchArticles(webapp2.RequestHandler):
           logging.info('The filter is by never used')
         elif filterType == 'oktosell':
           logging.info('The filter is oktosell')  
+          allarticle_query = myArticle.query().order(myArticle.articletimesused)
+          allarticlesbyused = allarticle_query.fetch()
+          logging.info("Query results in ok to sell: " + str(allarticlesbyused))
+          try:
+            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+            templist = list()
+            if type(email) == list:
+              logging.info('email type is list')
+              if len(email) > 0 :
+                logging.info('Email list is greater than 0')
+                for thisemail in email:
+                  for filteredarticle in allarticlesbyused:
+                    if filteredarticle.articleowner == thisemail:
+                      templist.append(filteredarticle)
+                      logging.info('found a list match')
+              else:
+                logging.info('Count is zero')
+            else:
+              logging.info('email type is str')
+              if not email == "":               
+                for filteredarticle in allarticlesbyused:
+                  if filteredarticle.articleowner == email:
+                    templist.append(filteredarticle)
+                    logging.info("found an email match")
+              else:
+                logging.info('Email is empty string')
+            logging.info('updating all articles by used is templist')
+            allarticlesbyused = templist
+          except:
+            logging.info('didnt get an email')
+          searchResultArticles = {}
+          searchResultList = list()
+          logging.info('looping through all articles')
+          for searchArticle in allarticlesbyused:
+            oktosell = str(searchArticle.articleoktosell)
+            oktosell = oktosell.lower()
+            if oktosell == searchFilter:
+              searchResultArticles[searchArticle.articlename] = searchArticle
+              logging.info('found an item ok to sell.')
 
         logging.info("searchResultArticles")    
         for thisArticle in searchResultArticles:
