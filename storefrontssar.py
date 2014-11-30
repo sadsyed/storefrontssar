@@ -170,11 +170,79 @@ class MainHandler(BaseHandler):
   def get(self):
     self.render_template('closetcontent.html')
 
+class SignupHandlerAndroid(BaseHandler):
+
+  def post(self):
+    try:
+      url = 'http://' + APP_ID_GLOBAL + '/CreateProfile'
+      logging.info('URL for CreateProfile is : ' + str(url))
+      data = json.loads(self.request.body)
+      logging.info('Json data sent to this function: ' + str(data))
+
+      user_name = data['username']
+      logging.info('user_name: ' + str(user_name))
+      email = data['email']
+      logging.info('email: ' + str(email))
+      name = data['name']
+      logging.info('name: ' + str(name))
+      password = data['password']
+      logging.info('password: ' + str(password))
+      last_name = data['lastname']
+      logging.info('lastname: ' +str(last_name))
+
+      unique_properties = ['email_address']
+      user_data = self.user_model.create_user(user_name,
+        unique_properties,
+        email_address=email, name=name, password_raw=password,
+        last_name=last_name, verified=False)
+      if not user_data[0]: #user_data is a tuple
+        self.display_message('Unable to create user for email %s because of \
+          duplicate keys %s' % (user_name, user_data[1]))
+        return
+
+      createParams = json.dumps({'username':user_name, 'email':email, 'name':name, 'password':password, 'lastname':last_name})
+      result = urlfetch.fetch(url=url, payload=createParams, method=urlfetch.POST, headers={'Content-Type': 'application/json'}, deadline=30)
+      logging.info('CreateProfile Result is: ' + str(result.content))
+      jsonresult = json.loads(result.content)
+      if jsonresult['errorcode'] == 0:
+        user = user_data[1]
+        user_id = user.get_id() 
+
+        token = self.user_model.create_signup_token(user_id)
+
+        verification_url = self.uri_for('verification', type='v', user_id=user_id,
+          signup_token=token, _full=True)
+
+
+        logging.info("User is: " + str(user_name))
+        emailSenderAddress = "smart.closet.service@gmail.com"
+        logging.info("set email address")
+        content = "Verify your smart closet account at: " + verification_url
+        logging.info('set content')
+
+        message = mail.EmailMessage(sender=emailSenderAddress, subject="Smart Closet Email Verification ")
+
+        if not mail.is_email_valid(email):
+          logging.info("The email is not valid.")
+          self.response.out.write("Email address is not valid.")
+
+        message.to = email
+        message.body = """%s""" %(content)
+        message.send()
+        logging.info("Verification url: " + verification_url)
+        result = json.dumps({'errorcode':0})
+    except:
+      result = json.dumps({'errorcode':1})
+      logging.info('Create Profile failed with errorcode: ' + str(result))
+    self.response.write(result)
+
 class SignupHandler(BaseHandler):
   def get(self):
     self.render_template('signup.html')
 
   def post(self):
+    url = 'http://' + APP_ID_GLOBAL + '/CreateProfile'
+    logging.info('URL for CreateProfile is : ' + str(url))
     user_name = self.request.get('username')
     email = self.request.get('email')
     name = self.request.get('name')
@@ -190,41 +258,39 @@ class SignupHandler(BaseHandler):
       self.display_message('Unable to create user for email %s because of \
         duplicate keys %s' % (user_name, user_data[1]))
       return
-    thisUser = smartClosetUser(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
 
+    createParams = json.dumps({'username':user_name, 'email':email, 'name':name, 'password':password, 'lastname':last_name})
+    result = urlfetch.fetch(url=url, payload=createParams, method=urlfetch.POST, headers={'Content-Type': 'application/json'}, deadline=30)
+    logging.info('CreateProfile Result is: ' + str(result.content))
+    jsonresult = json.loads(result.content)
+    if jsonresult['errorcode'] == 0:
+      user = user_data[1]
+      user_id = user.get_id() 
 
-    thisUser.userPin = None
-    thisUser.userName = name
-    thisUser.userEmail = email
-    thisUser.userMarkdown = "0.0"
-    thisUser.put()
-    logging.info('User written to database.')
-    user = user_data[1]
-    user_id = user.get_id()
+      token = self.user_model.create_signup_token(user_id)
 
-    token = self.user_model.create_signup_token(user_id)
+      verification_url = self.uri_for('verification', type='v', user_id=user_id,
+        signup_token=token, _full=True)
 
-    verification_url = self.uri_for('verification', type='v', user_id=user_id,
-      signup_token=token, _full=True)
+      logging.info("User is: " + str(user_name))
+      emailSenderAddress = "smart.closet.service@gmail.com"
+      logging.info("set email address")
+      content = "Verify your smart closet account at: " + verification_url
+      logging.info('set content')
 
-    logging.info("User is: " + str(user_name))
-    emailSenderAddress = "smart.closet.service@gmail.com"
-    logging.info("set email address")
-    content = "Verify your smart closet account at: " + verification_url
-    logging.info('set content')
+      message = mail.EmailMessage(sender=emailSenderAddress, subject="Smart Closet Email Verification ")
 
-    message = mail.EmailMessage(sender=emailSenderAddress, subject="Smart Closet Email Verification ")
+      if not mail.is_email_valid(email):
+        logging.info("The email is not valid.")
+        self.response.out.write("Email address is not valid.")
 
-    if not mail.is_email_valid(email):
-      logging.info("The email is not valid.")
-      self.response.out.write("Email address is not valid.")
-
-    message.to = email
-    message.body = """%s""" %(content)
-    message.send()
+      message.to = email
+      message.body = """%s""" %(content)
+      message.send()
     
     msg = "Verification message has been sent to: " + email
     self.display_message(msg)
+
 
 class ForgotPasswordHandler(BaseHandler):
   def get(self):
@@ -1139,9 +1205,43 @@ config = {
   }
 }
 
+class CreateProfile(webapp2.RequestHandler):
+  def post(self):
+    try:
+      data = json.loads(self.request.body)
+      logging.info('Json data sent to this function: ' + str(data))
+
+      user_name = data['username']
+      logging.info('user_name: ' + str(user_name))
+      email = data['email']
+      logging.info('email: ' + str(email))
+      name = data['name']
+      logging.info('name: ' + str(name))
+      password = data['password']
+      logging.info('password: ' + str(password))
+      last_name = data['lastname']
+      logging.info('lastname: ' +str(last_name))
+      
+      thisUser = smartClosetUser(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+
+      thisUser.userPin = None
+      thisUser.userName = name
+      thisUser.userEmail = email
+      thisUser.userMarkdown = "0.0"
+      thisUser.put()
+      logging.info('User written to database.')
+      result = json.dumps({'errorcode':0})
+      logging.info('Create Profile successed with errorcode: ' + str(result))
+    except:
+      result = json.dumps({'errorcode':1})
+      logging.info('Create Profile failed with errorcode: ' + str(result))
+    self.response.write(result)
+
+
 app = webapp2.WSGIApplication([
     webapp2.Route('/', MainHandler, name='home'),
     webapp2.Route('/signup', SignupHandler),
+    webapp2.Route('/signup2', SignupHandlerAndroid),
     webapp2.Route('/<type:v|p>/<user_id:\d+>-<signup_token:.+>',
       handler=VerificationHandler, name='verification'),
     webapp2.Route('/password', SetPasswordHandler),
@@ -1163,7 +1263,8 @@ app = webapp2.WSGIApplication([
     ('/CreateArticlePage', CreateArticlePage),
     ('/GetCategories', GetCategories),
     ('/GetSaleCategories', GetSaleCategories),
-    ('/GetCategory', GetCategory)
+    ('/GetCategory', GetCategory),
+    ('/CreateProfile', CreateProfile)
 ], debug=True, config=config)
 
 logging.getLogger().setLevel(logging.DEBUG)
