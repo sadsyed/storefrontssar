@@ -911,7 +911,60 @@ class SearchArticles(webapp2.RequestHandler):
         elif filterType == 'lastuseddate':
           logging.info('The filter type is lastuseddate')
         elif filterType == 'neverused':
-          logging.info('The filter is by never used')
+          logging.info('The filter is neverused')  
+          allarticle_query = myArticle.query().order(myArticle.articletimesused)
+          allarticlesbyused = allarticle_query.fetch()
+          logging.info("Query results in ok to sell: " + str(allarticlesbyused))
+          try:
+            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+            templist = list()
+            if type(email) == list:
+              logging.info('email type is list')
+              if len(email) > 0 :
+                logging.info('Email list is greater than 0')
+                for thisemail in email:
+                  for filteredarticle in allarticlesbyused:
+                    if filteredarticle.articleowner == thisemail:
+                      templist.append(filteredarticle)
+                      logging.info('found a list match')
+              else:
+                logging.info('Count is zero')
+            else:
+              logging.info('email type is str')
+              if not email == "":               
+                for filteredarticle in allarticlesbyused:
+                  if filteredarticle.articleowner == email:
+                    templist.append(filteredarticle)
+                    logging.info("found an email match")
+              else:
+                logging.info('Email is empty string')
+            logging.info('updating all articles by used is templist')
+            allarticlesbyused = templist
+          except:
+            logging.info('didnt get an email')
+          searchResultArticles = {}
+          searchResultList = list()
+          logging.info('looping through all articles')
+          for searchArticle in allarticlesbyused:
+            timesused = str(searchArticle.articletimesused)
+            logging.info("timesused is: " + timesused)
+            if searchFilter == "true":
+              logging.info("looking for items never used")
+              if timesused == "0":
+                searchResultArticles[searchArticle.articlename] = searchArticle
+                logging.info('found an item neverused.')
+            elif searchFilter == "":
+              pass
+            else:
+              logging.info("looking for items sometimes used")
+              if timesused == "0":
+                logging.info("timesued is zeron")
+              elif timesused == None:
+                pass
+              else:
+                searchResultArticles[searchArticle.articlename] = searchArticle
+                logging.info('found an article used at least once.')
+
         elif filterType == 'oktosell':
           logging.info('The filter is oktosell')  
           allarticle_query = myArticle.query().order(myArticle.articletimesused)
