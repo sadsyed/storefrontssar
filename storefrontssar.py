@@ -946,10 +946,17 @@ class SearchArticles(webapp2.RequestHandler):
 
     def post(self):
       payload = {}
+      data = None
+      searchFilter = None
+      filterType = None
       try:
-        data = json.loads(self.request.body)
-        logging.info('This is what Im looking for: ' + str(data))
-        searchFilter = data['filterString'].lower()
+        logging.info(str(self.request))
+        try:
+          data = json.loads(self.request.body)
+          logging.info('This is what Im looking for: ' + str(data))
+          searchFilter = data['filterString'].lower()
+        except:
+          searchFilter = self.request.get('filterString')
         logging.info('Filter: ' + str(searchFilter))
         email = ""
         try:
@@ -957,8 +964,11 @@ class SearchArticles(webapp2.RequestHandler):
           logging.info('email is: ' + str(email))        
         except:
           logging.info('didnt get email')
-        filterType = data['filterType']
-        logging.info("Got filter type")
+        try:  
+          filterType = data['filterType']
+          logging.info("Got filter type")
+        except:
+          filterType = self.request.get('filterType')
         if filterType == 'string':
           logging.info('The filter type is string')
           allarticle_query = myArticle.query().order(myArticle.articletimesused)

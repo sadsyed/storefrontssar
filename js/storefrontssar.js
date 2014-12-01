@@ -63,6 +63,7 @@
 
 $(document).ready(function() {
   $('#Error').hide();
+
   $('#All').click( function() {
     $('#merch0').empty();  
     $('#articleslideshow').empty();
@@ -113,6 +114,61 @@ $(document).delegate('.btn-primary', 'click', function()
       $('#Error').show();
     }, data: jsonData });
 });   
+
+$(document).delegate('#searchsubmit', 'click', function()
+{
+    var thisItem = $('#searchstring').val();
+    var myArticle = [];
+    var ajaxSuccess = false;
+    console.log("The item is: " + thisItem);
+    //var jsonData = {itemname: thisItem};
+    var jsonData = {filterType:"string",filterString:thisItem}
+    $.ajax({type:"POST", dataType: "json", url: "/SearchArticles", success:function(returndata) {
+      console.log("Got success");
+      console.log(returndata);
+      myArticle = returndata.articleList;
+      console.log("articles length is:" + myArticle.length);
+
+      $('#merch0').empty();
+      $('#articleslideshow').empty();
+      $('#articleslides').empty();
+
+      if(myArticle.length == 0) {
+            $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="0" class="active"></li>');
+            $('#articleslides').prepend('<div class="item active"><img class="slide-image" src="http://lh6.ggpht.com/VtzdDTxA6x5tVRGQDelP9B06vNcIx1O5NYYWzHGUxTirHrsgQxuC-VgDLAxpNMb7xwgGowSlSRxY25VhbH4KCVc8rxw" alt=""></div>');
+      }
+
+
+      for( var i=0; i < myArticle.length; i++) {
+          console.log('searchmerch i: ' + myArticle[i]);
+          var productDescription = myArticle[i].articleDescription;
+          var productPrice = Number(myArticle[i].articlePrice).toFixed(2);;
+          var imageurl = myArticle[i].articleImageUrl;
+          var productName = myArticle[i].articleName;
+          var rowcount = 0;
+          var rowstring = '"#merch' + rowcount + '"';
+
+          //'articleName''articleId''articleImageUrl''articlePrice''articleDescription'
+
+          $(document).ready(function () {
+              if(i == 0) {
+                $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i +'" class="active"></li>');
+                $('#articleslides').prepend('<div class="item active" ><img class="slide-image" src="' + imageurl + '" alt="" height="400" width="400"></div>');
+              } else {
+                $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
+                $('#articleslides').prepend('<div class="item" ><img class="slide-image" src="' + imageurl +'" alt="" height="400" width="400"></div>');
+              }
+              $("#merch0").prepend('<div class="col-sm-5 col-lg-5 col-md-5"><div class="thumbnail"><img src="' + imageurl + '" alt=""><div class="caption"><h4 class="pull-right">$' + productPrice + '</h4><h4><a href="#" click="return false;">' + productName + '</a></h4><p>' + productDescription + '</p><p><a class="btn btn-primary" id="' + productName + '"" href="#" onclick="return false;">Send email.</a></p></div></div></div>');
+
+          });
+      }
+
+    }, error: function(jqXHR, textStatus, errorThrown) {
+      console.log("There was an error.")
+    }, data: jsonData });
+    console.log("articles length is:" + myArticle.length);
+
+}); 
 
 $(document).delegate('#Coats', 'click', function()
 {
