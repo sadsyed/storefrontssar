@@ -770,17 +770,45 @@ class UpdateArticle(webapp2.RequestHandler):
       result = json.dumps({'errorcode':1}) 
     self.response.write(result)
 
+
+class GetUsers(webapp2.RequestHandler):
+
+  def get(self):
+    allusername_query = smartClosetUser.query().order(smartClosetUser.userName)
+    allusers = allusername_query.fetch()
+    logging.info('Created query')
+    userlist = []
+    try:
+      for existsuser in allusers:
+        userlist.append(existsuser.userName)
+      result = json.dumps({'userList':userlist})
+    except:
+      result = json.dumps({'errorcode':9}) # Error code 9: Can't configure 
+    self.response.write(result)
+
+class GetAccountSettings(BaseHandler):
+  @user_required
+  def get(self):
+    user = self.user
+    logging.info("User is: " + str(user))
+    email = user.email_address
+    logging.info("User email: " + email)
+    present_query = smartClosetUser.query(smartClosetUser.userEmail == email)
+    logging.info('Created query')
+    try:
+      existsuser = present_query.get()
+      logging.info("Query returned: " + str(existsuser))
+      result = json.dumps({'userName':existsuser.userName,'userPin':existsuser.userPin,'userMarkdown':existsuser.userMarkdown,'displayitemsnotusedwindow':existsuser.displayitemsnotusedwindow,'userEmail':existsuser.userEmail})
+    except:
+      result = json.dumps({'errorcode':9}) # Error code 9: Can't configure 
+    self.response.write(result)
+
 class ConfigureAccount(BaseHandler):
 
   @user_required
   def post(self):
     try:
       logging.info('POST data sent to this function: ' + str(self.request))
-      # find the user we are configuring?
-      # pull username from ndb storage
-      # hash pin
-      # save pin
-      # save markdown
       user = self.user
       logging.info("User is: " + str(user))
       email = user.email_address
@@ -792,6 +820,8 @@ class ConfigureAccount(BaseHandler):
         logging.info("Query returned: " + str(existsuser))
         existsuser.userPin = self.request.get('pin')
         existsuser.userMarkdown = self.request.get('markdown')
+        existsuser.displayitemsnotusedwindow = self.request.get('usedwindow')
+        logging.info('trying to write all items for user' + str(existsuser))
         existsuser.put()
         result = json.dumps({'errorcode':0})
       except:
@@ -834,6 +864,39 @@ class GetSaleCategories(webapp2.RequestHandler):
       logging.info("Returning: " + str(result))
       self.response.write(result)
 
+class GetSaleCategories2(webapp2.RequestHandler):
+    def post(self):
+      emailfilter = None
+      try:
+        data = json.loads(self.request.body)
+        emailfilter = data['emailFilter']
+      except:
+        logging.info("No json data, no email filter.")
+      allarticle_query = myArticle.query().order(myArticle.articletimesused)
+      allarticlesbyused = allarticle_query.fetch()
+      currentcategories = {}
+      for thisarticle in allarticlesbyused:
+        if not emailfilter == None:
+          try:
+            logging.info('trying to add for owner: ' + emailfilter + ' article is: ' + thisarticle.articleowner)
+            if thisarticle.articleowner == emailfilter and thisarticle.articleoktosell: 
+              currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+          except:
+            for thisowner in emailfilter:
+              logging.info('is list, owner is: ' + thisowner)
+              if thisarticle.articleowner == thisowner and thisarticle.articleoktosell: 
+                logging.info('adding item for owner in list')
+                currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+        else:
+          if thisarticle.articleoktosell:
+            currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+      returncategories = list()
+      for item in currentcategories:
+        category = {'name':currentcategories[item].categoryName, 'lastUsedArticleImageUrl':currentcategories[item].lastUsedArticleImageUrl}
+        returncategories.append(category)
+      result = json.dumps({'currentCategories':returncategories})
+      logging.info("Returning: " + str(result))
+      self.response.write(result)
 
 class GetCategories(webapp2.RequestHandler):
     def post(self):
@@ -958,13 +1021,38 @@ class SearchArticles(webapp2.RequestHandler):
 
     def testfunction(self,msg):
       try:
-        logging.info(msg)
+        logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+        templist = list()
+        if type(email) == list:
+          if len(email) > 0 :
+            logging.info('Email list is greater than 0')
+            for thisemail in email:
+              logging.info('looking for email: ' + str(thisemail))
+              for filteredarticle in allarticlesbyused:
+                logging.info('article compare email: ' + str(filteredarticle.articleowner))
+                if filteredarticle.articleowner == thisemail:
+                  templist.append(filteredarticle)
+            allarticlesbyused = templist
+          else:
+            logging.info('Count is zero')
+        else:
+          logging.info('email type is str')
+          if not email == "":               
+            for filteredarticle in allarticlesbyused:
+              if filteredarticle.articleowner == email:
+                templist.append(filteredarticle)
+                logging.info("found an email match")
+            allarticlesbyused = templist
+          else:
+            logging.info('Email is empty string')
+        logging.info('all articles by used after email filter: ' + str(allarticlesbyused))
       except:
-        logging.info("couldn't get msg")
+        logging.info('didnt get an email')
 
     def post(self):
       payload = {}
       data = None
+      self.testfunction("this is a test")
       searchFilter = None
       filterType = None
       try:
@@ -1074,16 +1162,19 @@ class SearchArticles(webapp2.RequestHandler):
             if not searchFilter == "":
               lastusedlist = searchArticle.articlelastused
               logging.info('last used list is: ' + str(lastusedlist))
+              recentusefound = False
               for useddate in lastusedlist:
                 logging.info("This use date is: " + str(useddate))
                 articledate = datetime.datetime.strptime(str(useddate), "%Y-%m-%d").date()
                 logging.info('changed to date: ' + str(articledate))
                 logging.info('searchdate is: ' + str(searchdate))
-                if articledate >= searchdate:
+                if articledate > searchdate:
                   logging.info("Found an article greater than search date")
-                  searchResultArticles[searchArticle.articlename] = searchArticle
+                  recentusefound = True
                 else:
                   logging.info('article not used recent enought')
+              if not recentusefound:
+                searchResultArticles[searchArticle.articlename] = searchArticle
 
         elif filterType == 'neverused':
           logging.info('The filter is neverused')  
@@ -1287,6 +1378,7 @@ app = webapp2.WSGIApplication([
     webapp2.Route('/login', LoginHandler, name='login'),
     webapp2.Route('/logout', LogoutHandler, name='logout'),
     webapp2.Route('/forgot', ForgotPasswordHandler, name='forgot'),
+    webapp2.Route('/GetAccountSettings', GetAccountSettings),
     webapp2.Route('/authenticated', AuthenticatedHandler, name='authenticated'),
     ('/GetMerch', GetMerch),
     ('/ConfigureAccount', ConfigureAccount),
@@ -1297,11 +1389,13 @@ app = webapp2.WSGIApplication([
     ('/UpdateArticle', UpdateArticle),
     ('/ReadArticle', ReadArticle),
     ('/SendEmail', SendEmail),
+    ('/GetUsers', GetUsers),
     ('/EmailPage', EmailPage),
     ('/SearchArticles', SearchArticles),
     ('/CreateArticlePage', CreateArticlePage),
     ('/ConfigureCategories', ConfigureCategories),
     ('/GetSaleCategories', GetSaleCategories),
+    ('/GetSaleCategories2', GetSaleCategories2),
     ('/GetCategories', GetCategories),
     ('/GetCategory', GetCategory),
     ('/CreateProfile', CreateProfile)

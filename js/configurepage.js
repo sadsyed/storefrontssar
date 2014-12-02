@@ -4,6 +4,12 @@
     var myMerch;
 
 
+    $.ajax({url: "/GetAccountSettings",success:function(data) {
+        console.log(data);
+
+
+    }});
+
     $.ajax({url: "/ConfigureCategories",success:function(data) {
         console.log(data);
         json = JSON.parse(data);
