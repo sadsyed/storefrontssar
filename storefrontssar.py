@@ -436,7 +436,19 @@ class LogoutHandler(BaseHandler):
 class AuthenticatedHandler(BaseHandler):
   @user_required
   def get(self):
-    self.render_template('authenticated.html')
+    user = self.user
+    logging.info("User is: " + str(user))
+    email = user.email_address
+    logging.info("User email: " + email)
+    present_query = smartClosetUser.query(smartClosetUser.userEmail == email)
+    logging.info('Created query')
+    try:
+      existsuser = present_query.get()
+      logging.info("Query returned: " + str(existsuser))
+      params = {'userName':existsuser.userName,'userPin':existsuser.userPin,'userMarkdown':existsuser.userMarkdown,'displayitemsnotusedwindow':existsuser.displayitemsnotusedwindow,'userEmail':existsuser.userEmail}
+    except:
+      pass
+    self.render_template('authenticated.html',params)
 
 class CreateArticle(webapp2.RequestHandler):
   def post(self):

@@ -40,13 +40,12 @@
                 <!--<div class="col-sm-4 col-lg-4 col-md-4">-->
                 <div class="col-md-12">
 				 	<FORM class="form_container" action="/ConfigureAccount" method="post">
-				    Article Creation PIN:	<br><INPUT type="text" name="pin" padding-left:5em><BR>
-				    <br>
-				    Article Markdown:	<br><INPUT type="text" name="markdown" padding-left:5em><BR>
-				    <br>
-				    Display Items Not Used Window <br>
-				    (Enter Date: YYYY-MM-DD):	<br><INPUT type="text" name="usedwindow" padding-left:5em><BR>
-				    <br>
+                    <h4>Update Settings:</h4>
+                    <b>User Email: </b><br>{{userEmail}} <br>
+				    <b>Article Creation PIN:	</b><br><INPUT type="text" name="pin" value="{{userPin}}" padding-left:5em><BR>
+				    <b>Article Markdown (Enter Integer):	</b><br><INPUT type="text" name="markdown" value="{{userMarkdown}}" padding-left:5em><BR>
+				    <b>Display Items Not Used Window</b> <br>
+				    (Enter Date: YYYY-MM-DD):	<br><INPUT type="text" name="usedwindow" value="{{displayitemsnotusedwindow}}" padding-left:5em><BR><br>
 				    <INPUT class="btn btn-primary" type="submit" value="Update Account Settings"> 
 				 </FORM>
 				</div>
