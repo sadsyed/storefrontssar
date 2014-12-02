@@ -1,22 +1,82 @@
 {% extends "main.html" %}
 
-{% block maincontent %}
+{% block closetcontent %}
+{% autoescape off %}
 
 
-<div class="container">
-	<H3> Configure Smart Closet Account </H3>
-<div class="row">
- <div>
- 	<FORM class="form_container" action="/ConfigureAccount" method="post">
-    Article Creation PIN:	<br><INPUT type="text" name="pin" padding-left:5em><BR>
-    <br>
-    Article Markdown:	<br><INPUT type="text" name="markdown" padding-left:5em><BR>
-    <br>
-    <INPUT class="btn btn-primary" type="submit" value="Update Account Settings"> 
- </FORM>
-</div>
-</div>
-</div>
+<body>
 
+
+    <!-- Page Content -->
+    <div class="container">
+            <!-- jQuery Version 1.11.0 -->
+        <script src="js/jquery-1.11.0.js"></script>
+        <script src="js/configurepage.js"></script>
+
+        <div class="row">
+
+            <div class="col-md-3">
+		    <H3> Configure Smart Closet Account </H3>
+                <div class="row carousel-holder">
+
+                    <div class="col-md-12">
+                        <div id="carousel-example-generic" class="carousel slide" data-ride="carousel">
+                            <ol id="articleslideshow" class="carousel-indicators">
+
+                            </ol>
+                            <div id="articleslides" class="carousel-inner">
+
+                            </div>
+                            <a class="left carousel-control" href="#carousel-example-generic" data-slide="prev">
+                                <span class="glyphicon glyphicon-chevron-left"></span>
+                            </a>
+                            <a class="right carousel-control" href="#carousel-example-generic" data-slide="next">
+                                <span class="glyphicon glyphicon-chevron-right"></span>
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+                <!--<div class="col-sm-4 col-lg-4 col-md-4">-->
+                <div class="col-md-12">
+				 	<FORM class="form_container" action="/ConfigureAccount" method="post">
+				    Article Creation PIN:	<br><INPUT type="text" name="pin" padding-left:5em><BR>
+				    <br>
+				    Article Markdown:	<br><INPUT type="text" name="markdown" padding-left:5em><BR>
+				    <br>
+				    Display Items Not Used Window <br>
+				    (Enter Date: YYYY-MM-DD):	<br><INPUT type="text" name="usedwindow" padding-left:5em><BR>
+				    <br>
+				    <INPUT class="btn btn-primary" type="submit" value="Update Account Settings"> 
+				 </FORM>
+				</div>
+            </div>
+
+            <div id="merchmain" class="col-md-9">
+                <!---Loaded merchandise comes below via jQuery storefrontssar.js-->
+                <h3>My Items:</h3>
+
+                <div id="merch0" class="row">
+
+
+
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+    <!-- /.container -->
+
+
+
+</body>
+
+</html>
+{% endautoescape %}
 {% endblock %}
+
 

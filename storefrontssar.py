@@ -49,6 +49,7 @@ class smartClosetUser(ndb.Model):
   userName = ndb.StringProperty()
   userEmail = ndb.StringProperty()
   userMarkdown = ndb.StringProperty()
+  displayitemsnotusedwindow = ndb.StringProperty()
 
 
 class articleImage(ndb.Model):
@@ -633,10 +634,20 @@ class CreateArticlePage(webapp2.RequestHandler):
 class ReadArticle(webapp2.RequestHandler):
   def post(self):
     try:
-      data = json.loads(self.request.body)
-      logging.info('Json data sent to this function: ' + str(data))
-      logging.info("Article ID: " + str(data['articleId']))
-      present_query = myArticle.query(myArticle.articleid == data['articleId'])
+      data = None
+      articleId = None
+      try:
+        logging.info(str(self.request))
+        try:
+          data = json.loads(self.request.body)
+          logging.info('json data received: ' + str(data)) 
+          articleId = data['articleId']
+        except:
+          articleId = self.request.get('articleId')
+          logging.info('Article id is: ' + str(articleId))
+      except:
+        logging.info('Error getting request data')
+      present_query = myArticle.query(myArticle.articleid == articleId)
       logging.info('Created query')
       try:
         existsarticle = present_query.get()
@@ -823,6 +834,7 @@ class GetSaleCategories(webapp2.RequestHandler):
       logging.info("Returning: " + str(result))
       self.response.write(result)
 
+
 class GetCategories(webapp2.RequestHandler):
     def post(self):
       emailfilter = None
@@ -944,6 +956,12 @@ class EmailPage(BaseHandler):
 
 class SearchArticles(webapp2.RequestHandler):
 
+    def testfunction(self,msg):
+      try:
+        logging.info(msg)
+      except:
+        logging.info("couldn't get msg")
+
     def post(self):
       payload = {}
       data = None
@@ -960,32 +978,29 @@ class SearchArticles(webapp2.RequestHandler):
         logging.info('Filter: ' + str(searchFilter))
         email = ""
         try:
-          email = data['email']
-          logging.info('email is: ' + str(email))        
+          email = data['email']       
         except:
           logging.info('didnt get email')
         try:  
           filterType = data['filterType']
-          logging.info("Got filter type")
         except:
           filterType = self.request.get('filterType')
         if filterType == 'string':
           logging.info('The filter type is string')
           allarticle_query = myArticle.query().order(myArticle.articletimesused)
           allarticlesbyused = allarticle_query.fetch()
-          logging.info("Query results: " + str(allarticlesbyused))
           try:
             logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
             templist = list()
             if type(email) == list:
-              logging.info('email type is list')
               if len(email) > 0 :
                 logging.info('Email list is greater than 0')
                 for thisemail in email:
+                  logging.info('looking for email: ' + str(thisemail))
                   for filteredarticle in allarticlesbyused:
+                    logging.info('article compare email: ' + str(filteredarticle.articleowner))
                     if filteredarticle.articleowner == thisemail:
                       templist.append(filteredarticle)
-                      logging.info('found a list match')
                 allarticlesbyused = templist
               else:
                 logging.info('Count is zero')
@@ -999,7 +1014,7 @@ class SearchArticles(webapp2.RequestHandler):
                 allarticlesbyused = templist
               else:
                 logging.info('Email is empty string')
-            
+            logging.info('all articles by used after email filter: ' + str(allarticlesbyused))
           except:
             logging.info('didnt get an email')
           searchResultArticles = {}
@@ -1011,17 +1026,18 @@ class SearchArticles(webapp2.RequestHandler):
             if not searchFilter == "":
               if searchFilter in articletype:
                 searchResultArticles[searchArticle.articlename] = searchArticle
-
               if searchFilter in articlename:
                 searchResultArticles[searchArticle.articlename] = searchArticle
-
-              if searchFilter in searchArticle.articletags:
-                searchResultArticles[searchArticle.articlename] = searchArticle
+              for thistag in searchArticle.articletags:
+                lowertag = thistag.lower()
+                if searchFilter in lowertag:
+                  searchResultArticles[searchArticle.articlename] = searchArticle
+            else:
+              logging.info('search filter is null')
 
         elif filterType == 'usagefilter':
           searchdate = datetime.datetime.strptime(searchFilter, "%Y-%m-%d").date()
-          logging.info('The filter type is usagefilter')
-          logging.info('searchdate is: ' + str(searchdate))
+          logging.info('The usage filter searchdate is: ' + str(searchdate))
           allarticle_query = myArticle.query().order(myArticle.articletimesused)
           allarticlesbyused = allarticle_query.fetch()
           logging.info("Query results in ok to sell: " + str(allarticlesbyused))
@@ -1029,7 +1045,6 @@ class SearchArticles(webapp2.RequestHandler):
             logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
             templist = list()
             if type(email) == list:
-              logging.info('email type is list')
               if len(email) > 0 :
                 logging.info('Email list is greater than 0')
                 for thisemail in email:
@@ -1050,15 +1065,13 @@ class SearchArticles(webapp2.RequestHandler):
                 allarticlesbyused = templist
               else:
                 logging.info('Email is empty string')
-            logging.info('updating all articles by used is templist')
           except:
             logging.info('didnt get an email')
           searchResultArticles = {}
           searchResultList = list()
-          logging.info('looping through all articles')
+
           for searchArticle in allarticlesbyused:
             if not searchFilter == "":
-              logging.info('search filter is not empty string')
               lastusedlist = searchArticle.articlelastused
               logging.info('last used list is: ' + str(lastusedlist))
               for useddate in lastusedlist:
@@ -1071,12 +1084,11 @@ class SearchArticles(webapp2.RequestHandler):
                   searchResultArticles[searchArticle.articlename] = searchArticle
                 else:
                   logging.info('article not used recent enought')
-          logging.info("searchResults are:  " + str(searchResultArticles))
+
         elif filterType == 'neverused':
           logging.info('The filter is neverused')  
           allarticle_query = myArticle.query().order(myArticle.articletimesused)
           allarticlesbyused = allarticle_query.fetch()
-          logging.info("Query results in ok to sell: " + str(allarticlesbyused))
           try:
             logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
             templist = list()
@@ -1102,24 +1114,19 @@ class SearchArticles(webapp2.RequestHandler):
                 allarticlesbyused = templist
               else:
                 logging.info('Email is empty string')
-            logging.info('updating all articles by used is templist')
           except:
             logging.info('didnt get an email')
           searchResultArticles = {}
           searchResultList = list()
-          logging.info('looping through all articles')
           for searchArticle in allarticlesbyused:
             timesused = str(searchArticle.articletimesused)
-            logging.info("timesused is: " + timesused)
             if searchFilter == "true":
-              logging.info("looking for items never used")
               if timesused == "0":
                 searchResultArticles[searchArticle.articlename] = searchArticle
                 logging.info('found an item neverused.')
             elif searchFilter == "":
               pass
             else:
-              logging.info("looking for items sometimes used")
               if timesused == "0":
                 logging.info("timesued is zeron")
               elif timesused == None:
@@ -1132,7 +1139,6 @@ class SearchArticles(webapp2.RequestHandler):
           logging.info('The filter is oktosell')  
           allarticle_query = myArticle.query().order(myArticle.articletimesused)
           allarticlesbyused = allarticle_query.fetch()
-          logging.info("Query results in ok to sell: " + str(allarticlesbyused))
           try:
             logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
             templist = list()
@@ -1158,12 +1164,11 @@ class SearchArticles(webapp2.RequestHandler):
                 allarticlesbyused = templist
               else:
                 logging.info('Email is empty string')
-            logging.info('updating all articles by used is templist')
           except:
             logging.info('didnt get an email')
           searchResultArticles = {}
           searchResultList = list()
-          logging.info('looping through all articles')
+
           for searchArticle in allarticlesbyused:
             oktosell = str(searchArticle.articleoktosell)
             oktosell = oktosell.lower()
@@ -1171,14 +1176,14 @@ class SearchArticles(webapp2.RequestHandler):
               searchResultArticles[searchArticle.articlename] = searchArticle
               logging.info('found an item ok to sell.')
 
-        logging.info("searchResultArticles")    
+        logging.info("searchResultArticles" + str(searchResultArticles))    
         for thisArticle in searchResultArticles:
           existsarticle = searchResultArticles[thisArticle]
           logging.info("Adding to list article: " + str(existsarticle))
           appendArticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
           logging.info('created append article ' + str(appendArticle))
           searchResultList.append(appendArticle)
-          logging.info('appended')
+
         payload = {'articleList':searchResultList}
         logging.info("SearchResultList: " + str(searchResultList))
       except:
@@ -1186,6 +1191,30 @@ class SearchArticles(webapp2.RequestHandler):
       result = json.dumps(payload)
       self.response.write(result)
 
+class ConfigureCategories(BaseHandler):
+    @user_required
+    def get(self):
+      webapp2.Route('/ConfigureCategories', ConfigureCategories),
+      user = self.user
+      logging.info("User is: " + str(user))
+      emailfilter = user.email_address
+      logging.info("User email: " + emailfilter)
+      logging.info('Returning merchandise.')
+      allarticle_query = myArticle.query().order(myArticle.articletimesused)
+      allarticlesbyused = allarticle_query.fetch()
+      mymerch = list()
+      try: 
+        for thisarticle in allarticlesbyused:
+          if thisarticle.articleoktosell == True:
+            if thisarticle.articleowner == emailfilter:
+              thismerch = {'imageurl':thisarticle.articleimageurl,'productName':thisarticle.articlename,'productDescription':thisarticle.articledescription,'productPrice':thisarticle.articleprice, 'productType':thisarticle.articletype}
+              mymerch.append(thismerch)
+      except:
+        pass
+      logging.info("The merch list: " + str(mymerch))
+      result = json.dumps({'myMerch': mymerch}) #[{merchandise},{merchandise}]
+      logging.info("Result is: " + str(result))
+      self.response.write(result)
 
 class GetMerch(webapp2.RequestHandler):
     def get(self):
@@ -1271,8 +1300,9 @@ app = webapp2.WSGIApplication([
     ('/EmailPage', EmailPage),
     ('/SearchArticles', SearchArticles),
     ('/CreateArticlePage', CreateArticlePage),
-    ('/GetCategories', GetCategories),
+    ('/ConfigureCategories', ConfigureCategories),
     ('/GetSaleCategories', GetSaleCategories),
+    ('/GetCategories', GetCategories),
     ('/GetCategory', GetCategory),
     ('/CreateProfile', CreateProfile)
 ], debug=True, config=config)
