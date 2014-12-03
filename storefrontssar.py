@@ -716,7 +716,7 @@ class UseArticle(webapp2.RequestHandler):
       result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
     self.response.write(result)
 
-class UpdateArticle(webapp2.RequestHandler):
+class UpdateArticle2(webapp2.RequestHandler):
 
   def post(self):
     result = {}
@@ -799,6 +799,119 @@ class UpdateArticle(webapp2.RequestHandler):
       result = json.dumps({'errorcode':1}) 
     self.response.write(result)
 
+
+class UpdateArticle(webapp2.RequestHandler):
+
+  def post(self):
+    result = {'errorcode':30} #Catchall error
+    try:
+      data = json.loads(self.request.body)
+      # for items that have values which are lsits, this specifies if you append or replace the item
+      # does not apply to single items
+      logging.info('Json data sent to this function: ' + str(data))
+      present_query = myArticle.query(myArticle.articleid == data['articleId'])
+      logging.info('Created query')
+      try:
+        existsarticle = present_query.get()
+        logging.info('Query returned: ' + str(existsarticle))
+        try:
+          if data['articlePrivate'] == 'True':
+            existsarticle.articleprivate = True
+            logging.info('updated article private to False')
+          elif data['articlePrivate'] == 'False':
+            existsarticle.articleprivate = False
+            logging.info('updated article private to False')
+        except:
+          logging.info('no new value for article private')
+        try: 
+          existsarticle.articleowner = data['articleOwner']
+          logging.info('articleOwner Updated: ' + str(data['articleOwner']))
+          result = json.dumps({'errorcode':0})
+        except:
+          logging.info('no article owner to update')
+        try:
+          existsarticle.articletype = data['articleType'] 
+          result = json.dumps({'errorcode':0})
+          logging.info('articletype updated')
+        except:
+          logging.info('no article type to update')
+        try:
+          if data['append'] == 'false':
+            logging.info("Replacing whole last used list.")
+            try:
+              existsarticle.articlelastused = data['articleLastUsed']
+              existsarticle.articletimesused = len(data['articleLastUsed'])
+              result = json.dumps({'errorcode':0})
+              logging.info('successfully update full list of article last used')
+            except:
+              logging.info('no article last used to update')
+          else:
+            logging.info('Appending item to last used list')
+            try:
+              templist = existsarticle.articlelastused
+              templist.append(data['articleLastUsed'])
+              existsarticle.articletimesused = len(templist)
+              existsarticle.articlelastused = templist
+              result = json.dumps({'errorcode':0})
+            except:
+              logging.info('did not specify article last used')
+        except:
+          result = json.dumps({'errorcode':7}) # Errorcode 7: did not specify append or replace
+        try:
+          if data['append'] == 'false':
+            try:
+              logging.info("Replacing whole taglist.")
+              existsarticle.articletags = data['articleTags']
+              result = json.dumps({'errorcode':0})
+            except:
+              logging.info('Did not specify tags')
+          else:
+            try:
+              logging.info('Appending item to tag list')
+              templist = existsarticle.articletags
+              templist.append(data['articleTags'])
+              existsarticle.articletags = templist
+              result = json.dumps({'errorcode':0})
+            except:
+              logging.info('did not specify tag to append')
+        except:
+          result = json.dumps({'errorcode':7}) # Errorcode 7: did not specify append or replace
+        val = 0.0
+        try:
+          logging.info("Trying to update: " + str(data['articlePrice']))
+          try:
+            val = int(data['articlePrice'])
+            logging.info("Got past int val.")
+          except ValueError:
+            val = float(data['articlePrice'])
+            logging.info('got past float val.')
+          existsarticle.articleprice = val
+          result = json.dumps({'errorcode':0})
+        except:
+          logging.info('did not specify new article price')
+        try:
+          existsarticle.articledescription = data['articleDescription']
+          result = json.dumps({'errorcode':0})
+        except:
+          logging.info('no new description to update')
+        try:
+          if data['articleOkToSell'] == 'true':
+            existsarticle.articleoktosell = True
+            logging.info("updating ok to sell to true")
+          else:
+            existsarticle.articleoktosell = False
+            logging.info("updating ok to sell to false")
+          result = json.dumps({'errorcode':0})
+        except:
+          logging.info('No value for ok to sell')
+        logging.info("Seemed to get value, trying to write")
+        existsarticle.put()
+      except:
+        pass
+      
+    except:
+      result = json.dumps({'errorcode':1}) 
+    self.response.write(result)
 
 class GetUsers(webapp2.RequestHandler):
 
@@ -1417,6 +1530,7 @@ app = webapp2.WSGIApplication([
     ('/DeleteArticle', DeleteArticle),
     ('/UseArticle', UseArticle),
     ('/UpdateArticle', UpdateArticle),
+    ('/UpdateArticle2', UpdateArticle2),
     ('/ReadArticle', ReadArticle),
     ('/SendEmail', SendEmail),
     ('/GetUsers', GetUsers),
