@@ -33,8 +33,8 @@ import base64
 import string
 
 
-APP_ID_GLOBAL = 'storefrontssar2.appspot.com'
-STORAGE_ID_GLOBAL = 'storefrontssar2'
+APP_ID_GLOBAL = 'data-concord-766.appspot.com'
+STORAGE_ID_GLOBAL = 'data-concord-766'
 #Probably not necessary to change default retry params, but here for example
 my_default_retry_params = gcs.RetryParams(initial_delay=0.2,
                                           max_delay=5.0,
@@ -680,7 +680,7 @@ class ReadArticle(webapp2.RequestHandler):
       logging.info('Created query')
       try:
         existsarticle = present_query.get()
-        returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+        returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articlePrivate':existsarticle.articleprivate}
         logging.info('Query returned: ' + str(existsarticle))
         result = json.dumps(returnarticle)
       except:
@@ -815,10 +815,10 @@ class UpdateArticle(webapp2.RequestHandler):
         existsarticle = present_query.get()
         logging.info('Query returned: ' + str(existsarticle))
         try:
-          if data['articlePrivate'] == 'True':
+          if data['articlePrivate'] == 'true':
             existsarticle.articleprivate = True
             logging.info('updated article private to False')
-          elif data['articlePrivate'] == 'False':
+          elif data['articlePrivate'] == 'false':
             existsarticle.articleprivate = False
             logging.info('updated article private to False')
         except:
@@ -861,7 +861,9 @@ class UpdateArticle(webapp2.RequestHandler):
           if data['append'] == 'false':
             try:
               logging.info("Replacing whole taglist.")
-              existsarticle.articletags = data['articleTags']
+              tags = list()
+              tags.append(data['articleTags'])
+              existsarticle.articletags = tags
               result = json.dumps({'errorcode':0})
             except:
               logging.info('Did not specify tags')
