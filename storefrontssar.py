@@ -643,6 +643,23 @@ class CreateArticlePage(webapp2.RequestHandler):
     logging.info('Writing response')
     self.response.write(fullhtml)
 
+class GetArticleInfo(BaseHandler):
+  @user_required
+  def post(self):
+    logging.info('In GetArticleinfo article request is: ' + str(self.request))
+    articleName = self.request.get('articleName')
+    logging.info("The article name is: " + str(articleName))
+    present_query = myArticle.query(myArticle.articlename == articleName)
+    logging.info('Created query')
+    returnarticle = None
+    try:
+      existsarticle = present_query.get()
+      returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+    except:
+      returnarticle = {'error': 11}
+    fullhtml = json.dumps(returnarticle)
+    self.response.write(fullhtml)
+
 class ReadArticle(webapp2.RequestHandler):
   def post(self):
     try:
@@ -1384,6 +1401,7 @@ app = webapp2.WSGIApplication([
     webapp2.Route('/', MainHandler, name='home'),
     webapp2.Route('/signup', SignupHandler),
     webapp2.Route('/signup2', SignupHandlerAndroid),
+    webapp2.Route('/GetArticleInfo', GetArticleInfo),
     webapp2.Route('/<type:v|p>/<user_id:\d+>-<signup_token:.+>',
       handler=VerificationHandler, name='verification'),
     webapp2.Route('/password', SetPasswordHandler),

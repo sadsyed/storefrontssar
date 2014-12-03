@@ -16,7 +16,7 @@
         <div class="row">
 
             <div class="col-md-3">
-		    <H3> Configure Smart Closet Account: {{ user.name }} </H3>
+		    <H3 id='Title2'> Configure Account: {{ user.name }} </H3>
                 <div class="row carousel-holder">
 
                     <div class="col-md-12">
@@ -38,7 +38,7 @@
 
                 </div>
                 <!--<div class="col-sm-4 col-lg-4 col-md-4">-->
-                <div class="col-md-12">
+                <div id="configaccount" class="col-md-12">
 				 	<FORM class="form_container" action="/ConfigureAccount" method="post">
                     <h4>Update Settings:</h4>
                     <b>User Email: </b><br>{{userEmail}} <br>
@@ -53,7 +53,7 @@
 
             <div id="merchmain" class="col-md-9">
                 <!---Loaded merchandise comes below via jQuery storefrontssar.js-->
-                <h3>My Items:</h3>
+                <h3 id='Title3'>Items:</h3>
 
                 <div id="merch0" class="row">
 
