@@ -1511,6 +1511,26 @@ class CreateProfile(webapp2.RequestHandler):
       logging.info('Create Profile failed with errorcode: ' + str(result))
     self.response.write(result)
 
+class GetUserAccount(webapp2.RequestHandler):
+  def post(self):
+    try:
+      data = json.loads(self.request.body)
+      logging.info('Json data sent to this function: ' + str(data))
+
+      email = data['email']
+      logging.info("user email : " + str(email))
+      present_query = smartClosetUser.query(smartClosetUser.userEmail == email)
+      logging.info('Created query')
+      try:
+        existsuser = present_query.get()
+        logging.info("Query returned: " + str(existsuser))
+        result = json.dumps({'userName':existsuser.userName,'userPin':existsuser.userPin,'userEmail':existsuser.userEmail})
+      except:
+        result = json.dumps({'errorcode':9}) # Error code 9: Can't configure
+    except:
+      result = json.dumps({'errorcode':1})
+    self.response.write(result)
+
 
 app = webapp2.WSGIApplication([
     webapp2.Route('/', MainHandler, name='home'),
@@ -1544,7 +1564,8 @@ app = webapp2.WSGIApplication([
     ('/GetSaleCategories2', GetSaleCategories2),
     ('/GetCategories', GetCategories),
     ('/GetCategory', GetCategory),
-    ('/CreateProfile', CreateProfile)
+    ('/CreateProfile', CreateProfile),
+    ('/GetUserAccount', GetUserAccount)
 ], debug=True, config=config)
 
 logging.getLogger().setLevel(logging.DEBUG)
