@@ -1570,7 +1570,7 @@ class GetUserAccount(webapp2.RequestHandler):
       try:
         existsuser = present_query.get()
         logging.info("Query returned: " + str(existsuser))
-        result = json.dumps({'userName':existsuser.userName,'userPin':existsuser.userPin,'userEmail':existsuser.userEmail})
+        result = json.dumps({'userName':existsuser.userName,'userEmail':existsuser.userEmail})
       except:
         result = json.dumps({'errorcode':9}) # Error code 9: Can't configure
     except:
