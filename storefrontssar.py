@@ -1144,7 +1144,12 @@ class GetCategory(webapp2.RequestHandler):
           else:
             returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
           if not returnarticle == {}:
-            returnlist.append(returnarticle)
+            try:
+              returnlist.index(returnarticle)
+              logging.info("no exception item already in list")
+            except:
+              logging.info("item not in list, appending")
+              returnlist.append(returnarticle)
         result = json.dumps({'category':returnlist})
       except:
         result = json.dumps({'errorcode': 10}) # Error code 10: No article matched filter.
