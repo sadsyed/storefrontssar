@@ -33,8 +33,8 @@ import base64
 import string
 
 
-APP_ID_GLOBAL = 'data-concord-766.appspot.com'
-STORAGE_ID_GLOBAL = 'data-concord-766'
+APP_ID_GLOBAL = 'storefrontssar2.appspot.com'
+STORAGE_ID_GLOBAL = 'storefrontssar2'
 #Probably not necessary to change default retry params, but here for example
 my_default_retry_params = gcs.RetryParams(initial_delay=0.2,
                                           max_delay=5.0,
@@ -557,16 +557,11 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
               result['url'] = ""
             logging.info("Result url" + str(result['url']))
             myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
-            logging.info("Got key")
             myimage.imageid = imageid
-            logging.info('after image id')
             myimage.imagefileurl = result['url']
-            logging.info('after url')
             myimage.imagecreationdate = creationdate
-            logging.info('after creation date')
             myimage.imagearticleid = articleid
             myimage.put()
-            logging.info("The image url being assigned is: " + myimage.imagefileurl)
             existsarticle.articleimageurl = myimage.imagefileurl
             existsarticle.put()
       except:
@@ -809,7 +804,8 @@ class UpdateArticle2(webapp2.RequestHandler):
 class UpdateArticle(webapp2.RequestHandler):
 
   def post(self):
-    result = {'errorcode':30} #Catchall error
+    waserror = False #Catchall error
+    result = None
     fieldsupdated = None
     logging.info(str(self.request))
     try:
@@ -911,7 +907,7 @@ class UpdateArticle(webapp2.RequestHandler):
               except:
                 logging.info('no value for article tags set')
           else:
-            result = json.dumps({'errorcode':7}) # Errorcode 7: did not specify append or replace
+            waserror = true # did not specify append or replace
         except:
           logging.info('missing append, article tags, or article last used')
         val = 0.0
@@ -950,9 +946,12 @@ class UpdateArticle(webapp2.RequestHandler):
         existsarticle.put()
       except:
         pass
-      result = json.dumps({'fieldsUpdated':fieldsupdated})  
+      result = {'errorcode':0, 'fieldsUpdated':fieldsupdated}  
     except:
-      result = json.dumps({'errorcode':1}) 
+      waserror = true
+    if waserror:
+      result['errorcode'] = 7
+    result = json.dumps(result)
     logging.info('Fields updated: ' + str(fieldsupdated))
     logging.info('Result writing: ' + str(result))
     self.response.write(result)
