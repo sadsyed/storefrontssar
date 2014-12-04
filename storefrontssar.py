@@ -848,12 +848,8 @@ class UpdateArticle(webapp2.RequestHandler):
           if data['articlePrivate'] == 'true':
             existsarticle.articleprivate = True
             logging.info('updated article private to False')
-<<<<<<< HEAD
             fieldsupdated.append('articlePrivate')
           elif data['articlePrivate'] == 'False':
-=======
-          elif data['articlePrivate'] == 'false':
->>>>>>> 7ed72191c8bf8ad1a77fed26265ba18065089e3d
             existsarticle.articleprivate = False
             logging.info('updated article private to False')
             fieldsupdated.append('articlePrivate')
@@ -876,7 +872,6 @@ class UpdateArticle(webapp2.RequestHandler):
         except:
           logging.info('No new article Type')
         try:
-<<<<<<< HEAD
           if not data['append'] == "":
             if data['append'] == 'false':
               logging.info("Replacing whole last used list.")
@@ -915,18 +910,6 @@ class UpdateArticle(webapp2.RequestHandler):
                   fieldsupdated.append('articleTags')
               except:
                 logging.info('no value for article tags set')
-
-=======
-          if data['append'] == 'false':
-            try:
-              logging.info("Replacing whole taglist.")
-              tags = list()
-              tags.append(data['articleTags'])
-              existsarticle.articletags = tags
-              result = json.dumps({'errorcode':0})
-            except:
-              logging.info('Did not specify tags')
->>>>>>> 7ed72191c8bf8ad1a77fed26265ba18065089e3d
           else:
             result = json.dumps({'errorcode':7}) # Errorcode 7: did not specify append or replace
         except:
