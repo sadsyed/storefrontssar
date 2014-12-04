@@ -33,8 +33,8 @@ import base64
 import string
 
 
-APP_ID_GLOBAL = 'storefrontssar2.appspot.com'
-STORAGE_ID_GLOBAL = 'storefrontssar2'
+APP_ID_GLOBAL = 'data-concord-766.appspot.com'
+STORAGE_ID_GLOBAL = 'data-concord-766'
 #Probably not necessary to change default retry params, but here for example
 my_default_retry_params = gcs.RetryParams(initial_delay=0.2,
                                           max_delay=5.0,
@@ -686,7 +686,7 @@ class ReadArticle(webapp2.RequestHandler):
       logging.info('Created query')
       try:
         existsarticle = present_query.get()
-        returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+        returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articlePrivate':existsarticle.articleprivate}
         logging.info('Query returned: ' + str(existsarticle))
         result = json.dumps(returnarticle)
       except:
@@ -845,11 +845,15 @@ class UpdateArticle(webapp2.RequestHandler):
         existsarticle = present_query.get()
         logging.info('Query returned: ' + str(existsarticle))
         try:
-          if data['articlePrivate'] == 'True':
+          if data['articlePrivate'] == 'true':
             existsarticle.articleprivate = True
             logging.info('updated article private to False')
+<<<<<<< HEAD
             fieldsupdated.append('articlePrivate')
           elif data['articlePrivate'] == 'False':
+=======
+          elif data['articlePrivate'] == 'false':
+>>>>>>> 7ed72191c8bf8ad1a77fed26265ba18065089e3d
             existsarticle.articleprivate = False
             logging.info('updated article private to False')
             fieldsupdated.append('articlePrivate')
@@ -872,6 +876,7 @@ class UpdateArticle(webapp2.RequestHandler):
         except:
           logging.info('No new article Type')
         try:
+<<<<<<< HEAD
           if not data['append'] == "":
             if data['append'] == 'false':
               logging.info("Replacing whole last used list.")
@@ -911,6 +916,17 @@ class UpdateArticle(webapp2.RequestHandler):
               except:
                 logging.info('no value for article tags set')
 
+=======
+          if data['append'] == 'false':
+            try:
+              logging.info("Replacing whole taglist.")
+              tags = list()
+              tags.append(data['articleTags'])
+              existsarticle.articletags = tags
+              result = json.dumps({'errorcode':0})
+            except:
+              logging.info('Did not specify tags')
+>>>>>>> 7ed72191c8bf8ad1a77fed26265ba18065089e3d
           else:
             result = json.dumps({'errorcode':7}) # Errorcode 7: did not specify append or replace
         except:
@@ -1553,6 +1569,26 @@ class CreateProfile(webapp2.RequestHandler):
       logging.info('Create Profile failed with errorcode: ' + str(result))
     self.response.write(result)
 
+class GetUserAccount(webapp2.RequestHandler):
+  def post(self):
+    try:
+      data = json.loads(self.request.body)
+      logging.info('Json data sent to this function: ' + str(data))
+
+      email = data['email']
+      logging.info("user email : " + str(email))
+      present_query = smartClosetUser.query(smartClosetUser.userEmail == email)
+      logging.info('Created query')
+      try:
+        existsuser = present_query.get()
+        logging.info("Query returned: " + str(existsuser))
+        result = json.dumps({'userName':existsuser.userName,'userPin':existsuser.userPin,'userEmail':existsuser.userEmail})
+      except:
+        result = json.dumps({'errorcode':9}) # Error code 9: Can't configure
+    except:
+      result = json.dumps({'errorcode':1})
+    self.response.write(result)
+
 
 app = webapp2.WSGIApplication([
     webapp2.Route('/', MainHandler, name='home'),
@@ -1586,7 +1622,8 @@ app = webapp2.WSGIApplication([
     ('/GetSaleCategories2', GetSaleCategories2),
     ('/GetCategories', GetCategories),
     ('/GetCategory', GetCategory),
-    ('/CreateProfile', CreateProfile)
+    ('/CreateProfile', CreateProfile),
+    ('/GetUserAccount', GetUserAccount)
 ], debug=True, config=config)
 
 logging.getLogger().setLevel(logging.DEBUG)
