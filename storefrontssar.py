@@ -812,12 +812,15 @@ class UpdateArticle(webapp2.RequestHandler):
       data = {}
       try:
         data = json.loads(self.request.body)
+        temp = data['articlePrivate']
+        data['articlePrivate'] = temp.lower()
         logging.info('Got json data')
       except:
         logging.info('trying to get request data')
         data['articleId'] = self.request.get('articleId')
         data['articleOwner'] = self.request.get('articleOwner')
-        data['articlePrivate'] = self.request.get('articlePrivate')
+        temp = self.request.get('articlePrivate')
+        data['articlePrivate'] = temp.lower()
         data['articleType'] = self.request.get('articleType')
         data['append'] = self.request.get('append')
         if not data['append'] == "":
@@ -843,9 +846,9 @@ class UpdateArticle(webapp2.RequestHandler):
         try:
           if data['articlePrivate'] == 'true':
             existsarticle.articleprivate = True
-            logging.info('updated article private to False')
+            logging.info('updated article private to True')
             fieldsupdated.append('articlePrivate')
-          elif data['articlePrivate'] == 'False':
+          elif data['articlePrivate'] == 'false':
             existsarticle.articleprivate = False
             logging.info('updated article private to False')
             fieldsupdated.append('articlePrivate')
