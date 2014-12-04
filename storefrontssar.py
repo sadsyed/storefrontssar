@@ -594,7 +594,13 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
 class DeleteArticle(webapp2.RequestHandler):
   def post(self):
     try:
-      data = json.loads(self.request.body)
+      data = {}
+      try:
+        data = json.loads(self.request.body)
+      except:
+        temp = self.request.get('articleidstodelete')
+        logging.info('Article to delete is: ' + temp)
+        data['articleidstodelete'] = [temp]
       logging.info('Json data sent to this function: ' + str(data))
       articleidstodelete = data['articleidstodelete'] # list of article ids to delete
       logging.info('Articleids are: ' + str(articleidstodelete))
@@ -804,13 +810,37 @@ class UpdateArticle(webapp2.RequestHandler):
 
   def post(self):
     result = {'errorcode':30} #Catchall error
+    fieldsupdated = None
+    logging.info(str(self.request))
     try:
-      data = json.loads(self.request.body)
-      # for items that have values which are lsits, this specifies if you append or replace the item
-      # does not apply to single items
+      data = {}
+      try:
+        data = json.loads(self.request.body)
+        logging.info('Got json data')
+      except:
+        logging.info('trying to get request data')
+        data['articleId'] = self.request.get('articleId')
+        data['articleOwner'] = self.request.get('articleOwner')
+        data['articlePrivate'] = self.request.get('articlePrivate')
+        data['articleType'] = self.request.get('articleType')
+        data['append'] = self.request.get('append')
+        if not data['append'] == "":
+          if data['append'] == 'false':
+            data['articleLastUsed'] = [self.request.get('articleLastUsed')]
+            tagtemp = self.request.get('articleTags')
+            logging.info(str(tagtemp))
+            data['articleTags'] = [tagtemp]
+          else:
+            data['articleLastUsed'] = self.request.get('articleLastUsed')
+            data['articleTags'] = self.request.get('articleTags')
+        data['articlePrice'] = self.request.get('articlePrice')
+        data['articleDescription'] = self.request.get('articleDescription')
+        data['articleOkToSell'] = self.request.get('articleOkToSell')
+        data['articleDelete'] = self.request.get('articleDelete')
       logging.info('Json data sent to this function: ' + str(data))
       present_query = myArticle.query(myArticle.articleid == data['articleId'])
       logging.info('Created query')
+      fieldsupdated = list()
       try:
         existsarticle = present_query.get()
         logging.info('Query returned: ' + str(existsarticle))
@@ -818,99 +848,114 @@ class UpdateArticle(webapp2.RequestHandler):
           if data['articlePrivate'] == 'True':
             existsarticle.articleprivate = True
             logging.info('updated article private to False')
+            fieldsupdated.append('articlePrivate')
           elif data['articlePrivate'] == 'False':
             existsarticle.articleprivate = False
             logging.info('updated article private to False')
+            fieldsupdated.append('articlePrivate')
+          else:
+            logging.info('No updates made to article private')
         except:
           logging.info('no new value for article private')
-        try: 
-          existsarticle.articleowner = data['articleOwner']
-          logging.info('articleOwner Updated: ' + str(data['articleOwner']))
-          result = json.dumps({'errorcode':0})
-        except:
-          logging.info('no article owner to update')
         try:
-          existsarticle.articletype = data['articleType'] 
-          result = json.dumps({'errorcode':0})
-          logging.info('articletype updated')
+          if not data['articleOwner'] == "":
+            existsarticle.articleowner = data['articleOwner']
+            logging.info('articleOwner Updated: ' + str(data['articleOwner']))
+            fieldsupdated.append('articleOwner')
         except:
-          logging.info('no article type to update')
+          logging.info('No new value for article Owner')
         try:
-          if data['append'] == 'false':
-            logging.info("Replacing whole last used list.")
-            try:
-              existsarticle.articlelastused = data['articleLastUsed']
-              existsarticle.articletimesused = len(data['articleLastUsed'])
-              result = json.dumps({'errorcode':0})
-              logging.info('successfully update full list of article last used')
-            except:
-              logging.info('no article last used to update')
+          if not data['articleType'] == "":
+            existsarticle.articletype = data['articleType'] 
+            fieldsupdated.append('articleType')
+            logging.info('articletype updated')
+        except:
+          logging.info('No new article Type')
+        try:
+          if not data['append'] == "":
+            if data['append'] == 'false':
+              logging.info("Replacing whole last used list.")
+              try:
+                if not data['articleLastUsed'] == "":
+                  existsarticle.articlelastused = data['articleLastUsed']
+                  existsarticle.articletimesused = len(data['articleLastUsed'])
+                  fieldsupdated.append('articleLastUsed')
+                  logging.info('successfully update full list of article last used')
+              except:
+                logging.info('no article last used set')
+              try:
+                if not data['articleTags'] == "":
+                  logging.info("Replacing whole taglist.")
+                  existsarticle.articletags = data['articleTags']
+                  fieldsupdated.append('articleTags')
+              except:
+                logging.info('no article tags set')
+            else:
+              try:
+                if not data['articleLastUsed'] == "":
+                  logging.info('Appending item to last used list')
+                  templist = existsarticle.articlelastused
+                  templist.append(data['articleLastUsed'])
+                  existsarticle.articletimesused = len(templist)
+                  existsarticle.articlelastused = templist
+                  fieldsupdated.append('articlePrivate')
+              except:
+                logging.info('no value for article last used set')
+              try:
+                if not data['articleTags'] == "":
+                  logging.info('Appending item to tag list')
+                  templist = existsarticle.articletags
+                  templist.append(data['articleTags'])
+                  existsarticle.articletags = templist
+                  fieldsupdated.append('articleTags')
+              except:
+                logging.info('no value for article tags set')
+
           else:
-            logging.info('Appending item to last used list')
-            try:
-              templist = existsarticle.articlelastused
-              templist.append(data['articleLastUsed'])
-              existsarticle.articletimesused = len(templist)
-              existsarticle.articlelastused = templist
-              result = json.dumps({'errorcode':0})
-            except:
-              logging.info('did not specify article last used')
+            result = json.dumps({'errorcode':7}) # Errorcode 7: did not specify append or replace
         except:
-          result = json.dumps({'errorcode':7}) # Errorcode 7: did not specify append or replace
-        try:
-          if data['append'] == 'false':
-            try:
-              logging.info("Replacing whole taglist.")
-              existsarticle.articletags = data['articleTags']
-              result = json.dumps({'errorcode':0})
-            except:
-              logging.info('Did not specify tags')
-          else:
-            try:
-              logging.info('Appending item to tag list')
-              templist = existsarticle.articletags
-              templist.append(data['articleTags'])
-              existsarticle.articletags = templist
-              result = json.dumps({'errorcode':0})
-            except:
-              logging.info('did not specify tag to append')
-        except:
-          result = json.dumps({'errorcode':7}) # Errorcode 7: did not specify append or replace
+          logging.info('missing append, article tags, or article last used')
         val = 0.0
         try:
-          logging.info("Trying to update: " + str(data['articlePrice']))
-          try:
-            val = int(data['articlePrice'])
-            logging.info("Got past int val.")
-          except ValueError:
-            val = float(data['articlePrice'])
-            logging.info('got past float val.')
-          existsarticle.articleprice = val
-          result = json.dumps({'errorcode':0})
+          if not data['articlePrice'] == "":
+            logging.info("Trying to update: " + str(data['articlePrice']))
+            try:
+              val = int(data['articlePrice'])
+              logging.info("Got past int val.")
+            except ValueError:
+              val = float(data['articlePrice'])
+              logging.info('got past float val.')
+            existsarticle.articleprice = val
+            fieldsupdated.append('articlePrice')
         except:
-          logging.info('did not specify new article price')
+          logging.info('no value set for article price')
         try:
-          existsarticle.articledescription = data['articleDescription']
-          result = json.dumps({'errorcode':0})
+          if not data['articleDescription'] == "":
+            existsarticle.articledescription = data['articleDescription']
+            fieldsupdated.append('articleDescription')
+            logging.info("updated article description")
         except:
-          logging.info('no new description to update')
+          logging.info('no value set for article description')
         try:
-          if data['articleOkToSell'] == 'true':
-            existsarticle.articleoktosell = True
-            logging.info("updating ok to sell to true")
-          else:
-            existsarticle.articleoktosell = False
-            logging.info("updating ok to sell to false")
-          result = json.dumps({'errorcode':0})
+          if not data['articleOkToSell'] == "":
+            if data['articleOkToSell'] == 'true':
+              existsarticle.articleoktosell = True
+              logging.info("updating ok to sell to true")
+            else:
+              existsarticle.articleoktosell = False
+              logging.info("updating ok to sell to false")
+            fieldsupdated.append('articleOkToSell')
         except:
-          logging.info('No value for ok to sell')
+          logging.info('no value set for ok to sell')
         logging.info("Seemed to get value, trying to write")
         existsarticle.put()
       except:
         pass
-      
+      result = json.dumps({'fieldsUpdated':fieldsupdated})  
     except:
       result = json.dumps({'errorcode':1}) 
+    logging.info('Fields updated: ' + str(fieldsupdated))
+    logging.info('Result writing: ' + str(result))
     self.response.write(result)
 
 class GetUsers(webapp2.RequestHandler):
@@ -1438,7 +1483,6 @@ class ConfigureCategories(BaseHandler):
       mymerch = list()
       try: 
         for thisarticle in allarticlesbyused:
-          if thisarticle.articleoktosell == True:
             if thisarticle.articleowner == emailfilter:
               thismerch = {'imageurl':thisarticle.articleimageurl,'productName':thisarticle.articlename,'productDescription':thisarticle.articledescription,'productPrice':thisarticle.articleprice, 'productType':thisarticle.articletype}
               mymerch.append(thismerch)

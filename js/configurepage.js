@@ -68,6 +68,7 @@ $(document).delegate('.callarticle', 'click', function()
       var articleImageUrl = returndata.articleImageUrl;
       var articleTimesUsed = returndata.articleTimesUsed;
       var articleOkToSell =returndata.articleOkToSell;
+      console.log('OK to sell: ' + articleOkToSell);
       var articleTags = returndata.articleTags;
 
       $('#merch0').empty();  
@@ -84,16 +85,18 @@ $(document).delegate('.callarticle', 'click', function()
       $('#articleslideshow').append('<li data-target="#carousel-example-generic" data-slide-to="0" class="active"></li>');
       $('#articleslides').prepend('<div class="item active" ><img class="slide-image" src="' + articleImageUrl + '" alt="" height="400" width="400"></div>');
       $('#merch0').append('<b>Article Name:   </b><label id="articleName" padding-left:5em> ' + name + '</label><BR>');
-      $('#merch0').append('<b>Article Id:   </b><label id="articleId" padding-left:5em>' + articleId +'</label><BR>');
+      $('#merch0').append('<b>Article Id:   </b><label id="articleId" value="' + articleId + '" padding-left:5em>' + articleId +'</label><BR>');
       $('#merch0').append('<b>Article Last Used:   </b><br><INPUT type="text" id="articleLastUsed" name="articleLastUsed" value="' + lastUsed +'" padding-left:5em><BR>');
       $('#merch0').append('<b>Article Price:   </b><br><INPUT type="text" id="articlePrice" name="articlePrice" value="' + articlePrice +'" padding-left:5em><BR>');
       $('#merch0').append('<b>Article Description:   </b><br><INPUT type="text" id="articleDescription" name="articleDescription" value="' + articleDescription +'" padding-left:5em><BR>');
       $('#merch0').append('<b>Article Times Used:   </b><br><INPUT type="text" id="articleTimesUsed" name="articleTimesUsed" value="' + articleTimesUsed +'" padding-left:5em><BR>');
       $('#merch0').append('<b>Article Tags:   </b><br><INPUT type="text" id="articleTags" name="articleTags" value="' + articleTags[0] +'" padding-left:5em><br>');
-      if (articleOkToSell == "true") {
-        $('#merch0').append('<b><input type="checkbox" id="articleOkToSell" name="articleOkToSell" value="c" checked> Article Ok To Sell</b><br>');
+      if (articleOkToSell == true) {
+        $('#merch0').append('<b><input type="checkbox" id="articleOkToSell" name="articleOkToSell" checked> Article Ok To Sell</b><br>');
+        $('#articleOkToSell').prop('checked', true);
       } else {
-        $('#merch0').append('<b><input type="checkbox" id="articleOkToSell" name="articleOkToSell" value="uc" checked> Article Ok To Sell</b><br>');
+        $('#merch0').append('<b><input type="checkbox" id="articleOkToSell" name="articleOkToSell"> Article Ok To Sell</b><br>');
+        $('#articleOkToSell').prop('checked', false);
       }
       $('#merch0').append('<b><input type="checkbox" id="articleDelete" name="articleDelete" value="uc"> Delete Article </b><br>');
       $('#merch0').append('<a class="btn btn-success" id="' + name + '"" href="#" onclick="return false;">Update Item</a></p>');
@@ -105,26 +108,48 @@ $(document).delegate('.callarticle', 'click', function()
 
 $(document).delegate('.btn-success', 'click', function()
 {
-    var articleid = $('#articleId').val();
-    var lastused = $('#articleLastUsed').val();
-    var articleprice = $('#articlePrice').val();
-    var articledescription = $('#articleDescription').val();
-    var articletimesused = $('#articleTimesUsed').val();
-    var articleoktosell = $('#articleOkToSell').val();
-    var articledelete = $('#articleDelete').val();
-    console.log('OK to sell value is: ' + articleoktosell);
-    console.log('Delete article is: ' + articledelete)
-    var temp = $('#articleTags').val();
-    var articletags = [temp];
+    var articleid = $('#articleId').attr('value');
+    console.log('articleId is: ' + articleid);
+    if ($('#articleDelete').prop('checked') == true) {
+      articledelete = true;
+      console.log('Delete article: ' + articleid)
+      var jsonData = {articleidstodelete: articleid};
+      console.log('JSon sending to update article is: ' + jsonData);
+      $.ajax({type:"POST", dataType: "json", url: "/DeleteArticle", success:function(returndata) {
+        console.log("Deleted article");
+        window.location ="https://storefrontssar2.appspot.com/authenticated"
+      }, error: function(jqXHR, textStatus, errorThrown) {
+        console.log("There was an error.")
+      }, data: jsonData });
+    } else {
+      var lastused = $('#articleLastUsed').val();
+      var articleprice = $('#articlePrice').val();
+      var articledescription = $('#articleDescription').val();
+      var articletimesused = $('#articleTimesUsed').val();
+      var articleoktosell;
+      var articledelete;
+      if ($('#articleOkToSell').prop('checked') == true)  {
+        articleoktosell = true;
+      } else {
+        articleoktosell = false;
+      }
+      console.log('OK to sell value is: ' + articleoktosell);
+      var temp = $('#articleTags').val();
+      console.log('temp is: ' + temp);
+      var articletags = temp;
+      console.log('articletags is: ' + articletags);
 
-    var jsonData = {articleId: articleid,fieldToUpdate:'articlePrice', newValue:articleprice};
-    $.ajax({type:"POST", dataType: "json", url: "/UpdateArticle", success:function(returndata) {
-      console.log("Sent price");
-      window.location ="https://storefrontssar2.appspot.com/authenticated"
-    }, error: function(jqXHR, textStatus, errorThrown) {
-      console.log("There was an error.")
-      $('#Error').show();
-    }, data: jsonData });
+      var jsonData = {articleId: articleid,append:'false', articleLastUsed:lastused, articleTags: articletags, articleDescription:articledescription, articleOkToSell:articleoktosell, articleDelete:articledelete, articlePrice:articleprice, articleDelete:articledelete};
+      console.log('JSon sending to update article is: ' + jsonData);
+      $.ajax({type:"POST", dataType: "json", url: "/UpdateArticle", success:function(returndata) {
+        console.log("Sent price");
+        window.location ="https://storefrontssar2.appspot.com/authenticated"
+      }, error: function(jqXHR, textStatus, errorThrown) {
+        console.log("There was an error.")
+      }, data: jsonData });
+    }
+
+
 });  
  
 } (jQuery)));
