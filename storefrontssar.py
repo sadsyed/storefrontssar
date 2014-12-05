@@ -812,11 +812,51 @@ class UpdateArticle(webapp2.RequestHandler):
       data = {}
       try:
         data = json.loads(self.request.body)
-        temp = data['articlePrivate']
-        data['articlePrivate'] = temp.lower()
+        if data['append'] == 'false':
+          try:
+            tagtemp = data['articleTags']
+            if type(tagtemp) == list:
+              logging.info('tags already a list, do nothing')
+            else:
+              data['articleTags'] = [data['articleTags']]
+              logging.info('make tags a list: ' + str(data['articleTags']))
+          except:
+            pass
+          try:
+            usedlisttemp = data['articleLastUsed']
+            if type(usedlisttemp) == list:
+              logging.info('used list already a list, do nothing')
+            else:
+              data['articleLastUsed'] = [data['articleLastUsed']]
+              logging.info('article last used a string, making it a list')
+          except:
+            pass
+        else:
+          try:
+            tagtemp = data['articleTags']
+            if type(tagtemp) == list:
+              data['articleTags'] = data['articleTags'][0]
+            else:
+              pass
+          except:
+            pass
+          try:
+            usedlisttemp = data['articleLastUsed']
+            if type(usedlisttemp) == list:
+              data['articleLastUsed'] = data['articleLastUsed'][0]
+            else:
+              pass
+          except:
+            pass
+        try:       
+          temp = data['articlePrivate']
+          data['articlePrivate'] = temp.lower()
+        except:
+          pass
         logging.info('Got json data')
       except:
         logging.info('trying to get request data')
+
         data['articleId'] = self.request.get('articleId')
         data['articleOwner'] = self.request.get('articleOwner')
         temp = self.request.get('articlePrivate')
@@ -825,10 +865,29 @@ class UpdateArticle(webapp2.RequestHandler):
         data['append'] = self.request.get('append')
         if not data['append'] == "":
           if data['append'] == 'false':
-            data['articleLastUsed'] = [self.request.get('articleLastUsed')]
+            logging.info('append is false')
+            lastusedtemp = self.request.get('articleLastUsed')
+            logging.info('last used temp is: ' + str(lastusedtemp))
+            if type(lastusedtemp) == list:
+              logging.info('last used temp is list')
+              data['articleLastUsed'] = lastusedtemp
+            else:
+              if not lastusedtemp == "":
+                logging.info('making last used temp a list')
+                data['articleLastUsed'] = [lastusedtemp]
+              else:
+                logging.info('Didnt get any last used dates')
             tagtemp = self.request.get('articleTags')
-            logging.info(str(tagtemp))
-            data['articleTags'] = [tagtemp]
+            if type(tagtemp) == list:
+              logging.info('tag temp is a list')
+              data['articleTags'] = tagtemp
+            else:
+              if not tagtemp == "":
+                logging.info('tag temp is a string, and not empty making a list')
+                data['articleTags'] = [tagtemp]
+                logging.info('tag temp is nowC' + str(data['articleTags']))
+              else:
+                logging.info('Didnt get any tags')
           else:
             data['articleLastUsed'] = self.request.get('articleLastUsed')
             data['articleTags'] = self.request.get('articleTags')
@@ -883,7 +942,6 @@ class UpdateArticle(webapp2.RequestHandler):
               except:
                 logging.info('no article last used set')
               try:
-                if not data['articleTags'] == "":
                   logging.info("Replacing whole taglist.")
                   existsarticle.articletags = data['articleTags']
                   fieldsupdated.append('articleTags')
@@ -892,12 +950,13 @@ class UpdateArticle(webapp2.RequestHandler):
             else:
               try:
                 if not data['articleLastUsed'] == "":
-                  logging.info('Appending item to last used list')
+                  logging.info('Appending item to last used list: ' + str(data['articleLastUsed']))
                   templist = existsarticle.articlelastused
+                  logging.info('current list is: ' + str(templist))
                   templist.append(data['articleLastUsed'])
                   existsarticle.articletimesused = len(templist)
                   existsarticle.articlelastused = templist
-                  fieldsupdated.append('articlePrivate')
+                  fieldsupdated.append('articleLastUsed')
               except:
                 logging.info('no value for article last used set')
               try:
