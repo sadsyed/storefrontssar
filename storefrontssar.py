@@ -63,6 +63,7 @@ class articleImage(ndb.Model):
   imagefileurl = ndb.StringProperty()
   imagecreationdate = ndb.StringProperty()
   imagearticleid = ndb.StringProperty()
+  colors = ndb.StringProperty(repeated=True)
 
 class myArticle(ndb.Model):
   articlename = ndb.StringProperty()
@@ -514,183 +515,177 @@ class CreateArticle(webapp2.RequestHandler):
 
 class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
 
-    Point = namedtuple('Point', ('coords', 'n', 'ct'))
-    Cluster = namedtuple('Cluster', ('points', 'center', 'n'))
+  Point = namedtuple('Point', ('coords', 'n', 'ct'))
+  Cluster = namedtuple('Cluster', ('points', 'center', 'n'))
 
-    def get_points(self, img):
-        points = []
-        w, h = img.size
-        for count, color in img.getcolors(w * h):
-            points.append(self.Point(color, 3, count))
-        return points
+  def get_points(self, img):
+    points = []
+    w, h = img.size
+    for count, color in img.getcolors(w * h):
+        points.append(self.Point(color, 3, count))
+    return points
 
-    rtoh = lambda self, rgb: '#%s' % ''.join(('%02x' % p for p in rgb))
+  rtoh = lambda self, rgb: '#%s' % ''.join(('%02x' % p for p in rgb))
 
-    def euclidean(self, p1, p2):
-        return sqrt(sum([
-            (p1.coords[i] - p2.coords[i]) ** 2 for i in range(p1.n)
-        ]))
+  def euclidean(self, p1, p2):
+    return sqrt(sum([
+        (p1.coords[i] - p2.coords[i]) ** 2 for i in range(p1.n)
+    ]))
 
-    def calculate_center(self, points, n):
-        vals = [0.0 for i in range(n)]
-        plen = 0
+  def calculate_center(self, points, n):
+    vals = [0.0 for i in range(n)]
+    plen = 0
+    for p in points:
+        plen += p.ct
+        for i in range(n):
+            vals[i] += (p.coords[i] * p.ct)
+    return self.Point([(v / plen) for v in vals], n, 1)
+
+  def kmeans(self, points, k, min_diff):
+    clusters = [self.Cluster([p], p, p.n) for p in random.sample(points, k)]
+
+    while 1:
+        plists = [[] for i in range(k)]
+
         for p in points:
-            plen += p.ct
-            for i in range(n):
-                vals[i] += (p.coords[i] * p.ct)
-        return self.Point([(v / plen) for v in vals], n, 1)
-
-    def kmeans(self, points, k, min_diff):
-        clusters = [self.Cluster([p], p, p.n) for p in random.sample(points, k)]
-
-        while 1:
-            plists = [[] for i in range(k)]
-
-            for p in points:
-                smallest_distance = float('Inf')
-                for i in range(k):
-                    distance = self.euclidean(p, clusters[i].center)
-                    if distance < smallest_distance:
-                        smallest_distance = distance
-                        idx = i
-                plists[idx].append(p)
-
-            diff = 0
+            smallest_distance = float('Inf')
             for i in range(k):
-                old = clusters[i]
-                center = self.calculate_center(plists[i], old.n)
-                new = self.Cluster(plists[i], center, old.n)
-                clusters[i] = new
-                diff = max(diff, self.euclidean(old.center, new.center))
+                distance = self.euclidean(p, clusters[i].center)
+                if distance < smallest_distance:
+                    smallest_distance = distance
+                    idx = i
+            plists[idx].append(p)
 
-            if diff < min_diff:
-                break
+        diff = 0
+        for i in range(k):
+            old = clusters[i]
+            center = self.calculate_center(plists[i], old.n)
+            new = self.Cluster(plists[i], center, old.n)
+            clusters[i] = new
+            diff = max(diff, self.euclidean(old.center, new.center))
 
-        return clusters
+        if diff < min_diff:
+            break
 
-    def colorz(self, blob_key, n=3):
+    return clusters
+
+  def colorz(self, blob_key, n=3):
+    blob_reader = blobstore.BlobReader(blob_key)
+    img = Image.open(blob_reader)
+    w, h = img.size
+    logging.info("w: " + str(w))
+    logging.info("h: " + str(h))
+    img.thumbnail((200, 200))
+
+    points = self.get_points(img)
+    #logging.info("points: " + str(points))
+    clusters = self.kmeans(points, n, 1)
+    #logging.info("clusters: " + str(clusters))
+    rgbs = [map(int, c.center.coords) for c in clusters]
+    logging.info("rgbs: " + str(rgbs))
+    return map(self.rtoh, rgbs)
+
+  def printColors(outfile, colors, n=3):
+    swatchsize = 80
+    pal = Image.new('RGB', (swatchsize*n, swatchsize))
+    draw = ImageDraw.Draw(pal)
+
+    posx = 0
+    for col in colors:
+        print col
+        draw.rectangle([posx, 0, posx+swatchsize, swatchsize], fill=col)
+        posx = posx + swatchsize
+
+    del draw
+    pal.save(outfile, "PNG")
+
+  def initialize(self, request, response):
+      super(AndroidUploadHandler, self).initialize(request, response)
+      self.response.headers['Access-Control-Allow-Origin'] = '*'
+      self.response.headers[
+          'Access-Control-Allow-Methods'
+      ] = 'OPTIONS, HEAD, GET, POST, PUT'
+      self.response.headers[
+          'Access-Control-Allow-Headers'
+      ] = 'Content-Type, Content-Range, Content-Disposition'
+
+
+  def handle_android_upload(self):
+    try:
+      articleid = self.request.headers['articleid']
+      logging.info('Article ID is: ' + str(articleid))
+      logging.info('Check if article exists')
+      present_query = myArticle.query(myArticle.articleid  == articleid)
+      existsarticle = present_query.get()
+      comments = ""
+      if not existsarticle == None:
+        imageid = str(uuid.uuid1())
+        bucket_name = os.environ.get('BUCKET_NAME', app_identity.get_default_gcs_bucket_name())
+        logging.info("My bucket name is: " + str(bucket_name))
+        bucket = '/' + bucket_name
+        filename = bucket + '/' + articleid + '/' + imageid
+        try:
+          myimagefile = self.request.get('imageFile')
+        except:
+          logging.info("Imagefile not retrieved from self.request")
+        result = {}
+        creationdate = str(datetime.datetime.now().date())
+        logging.info("starting to write file to store")
+      # Create a GCS file with GCS client.
+        with gcs.open(filename, 'w') as f:
+          f.write(myimagefile)
+      # Blobstore API requires extra /gs to distinguish against blobstore files.
+        blobstore_filename = '/gs' + filename
+        blob_key = blobstore.create_gs_key(blobstore_filename)
+        logging.info("Trying to get url for blob key: " + str(blob_key))
+
+      # extract the colors from the image
         blob_reader = blobstore.BlobReader(blob_key)
         img = Image.open(blob_reader)
         w, h = img.size
-        logging.info("w: " + str(w))
-        logging.info("h: " + str(h))
-        img.thumbnail((200, 200))
+        colors = self.colorz(blob_key)
+        logging.info("colors are : " + str(colors))
 
-        points = self.get_points(img)
-        logging.info("points: " + str(points))
-        clusters = self.kmeans(points, n, 1)
-        logging.info("clusters: " + str(clusters))
-        rgbs = [map(int, c.center.coords) for c in clusters]
-        logging.info("rgbs: " + str(rgbs))
-        return map(self.rtoh, rgbs)
+        try:
+          result['url'] = images.get_serving_url(
+              blob_key,
+          )
+        except:
+          logging.info("Could not get serving url")
+          result['url'] = ""
+        logging.info("Result url: " + str(result['url']))
 
-    def printColors(outfile, colors, n=3):
-        swatchsize = 80
-        pal = Image.new('RGB', (swatchsize*n, swatchsize))
-        draw = ImageDraw.Draw(pal)
+        myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+        myimage.imageid = imageid
+        myimage.imagefileurl = result['url']
+        myimage.imagecreationdate = creationdate
+        myimage.imagearticleid = articleid
+        myimage.colors = colors
+        myimage.put()
+        existsarticle.articleimageurl = myimage.imagefileurl
+        existsarticle.put()
 
-        posx = 0
-        for col in colors:
-            print col
-            draw.rectangle([posx, 0, posx+swatchsize, swatchsize], fill=col)
-            posx = posx + swatchsize
+    except:
+      logging.info("exception uploading files")
 
-        del draw
-        pal.save(outfile, "PNG")
+    return result
 
-    def initialize(self, request, response):
-        super(AndroidUploadHandler, self).initialize(request, response)
-        self.response.headers['Access-Control-Allow-Origin'] = '*'
-        self.response.headers[
-            'Access-Control-Allow-Methods'
-        ] = 'OPTIONS, HEAD, GET, POST, PUT'
-        self.response.headers[
-            'Access-Control-Allow-Headers'
-        ] = 'Content-Type, Content-Range, Content-Disposition'
+  def options(self):
+      pass
 
+  def head(self):
+      pass
 
-    def handle_android_upload(self):
-      try:
-        articleid = self.request.headers['articleid']
-        logging.info('Article ID is: ' + str(articleid))
-        logging.info('Check if article exists')
-        present_query = myArticle.query(myArticle.articleid  == articleid)
-        existsarticle = present_query.get()
-        comments = ""
-        if not existsarticle == None:
-          imageid = str(uuid.uuid1())
-          bucket_name = os.environ.get('BUCKET_NAME', app_identity.get_default_gcs_bucket_name())
-          logging.info("My bucket name is: " + str(bucket_name))
-          bucket = '/' + bucket_name
-          filename = bucket + '/' + articleid + '/' + imageid
-          try:
-            myimagefile = self.request.get('imageFile')
-          except:
-            logging.info("Imagefile not retrieved from self.request")
-          result = {}
-          creationdate = str(datetime.datetime.now().date())
-          logging.info("starting to write file to store")
-        # Create a GCS file with GCS client.
-          with gcs.open(filename, 'w') as f:
-            f.write(myimagefile)
-        # Blobstore API requires extra /gs to distinguish against blobstore files.
-          blobstore_filename = '/gs' + filename
-          blob_key = blobstore.create_gs_key(blobstore_filename)
-          logging.info("Trying to get url for blob key: " + str(blob_key))
+  def get(self):
+      pass
 
-          blob_reader = blobstore.BlobReader(blob_key)
-          img = Image.open(blob_reader)
-          w, h = img.size
-          colors = self.colorz(blob_key)
-          logging.info("colors are : " + str(colors))
-
-          try:
-            result['url'] = images.get_serving_url(
-                blob_key,
-            )
-          except:
-            logging.info("Could not get serving url")
-            result['url'] = ""
-          logging.info("Result url: " + str(result['url']))
-
-          myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
-          myimage.imageid = imageid
-          myimage.imagefileurl = result['url']
-          myimage.imagecreationdate = creationdate
-          myimage.imagearticleid = articleid
-          myimage.put()
-          existsarticle.articleimageurl = myimage.imagefileurl
-          existsarticle.put()
-
-      except:
-        logging.info("exception uploading files")
-
-      logging.info("Get Image colors for url: " + str(myimage.imagefileurl))
-      logging.info("colorz - image url is : " + str(myimage.imagefileurl))
-      #opener = urllib2.build_opener()
-      #page1 = opener.open(myimage.imagefileurl)
-      #img = page1.read()
-      #colors = self.colorz(blob_key)
-      #logging.info("Colors of the image: " + str(colors))    
-      #logging.info("Result of image upload is: " + str(result))
-      return result
-
-    def options(self):
-        pass
-
-    def head(self):
-        pass
-
-    def get(self):
-        pass
-
-    def post(self):
-        logging.info("Post request: " + str(self.request))
-        result = {'file': self.handle_android_upload()['url']}
-        logging.info("Post result: " + str(result))
-        s = json.dumps(result)
-        logging.info("Post result writing is: " + str(s))
-        self.response.write(s)
+  def post(self):
+      logging.info("Post request: " + str(self.request))
+      result = {'file': self.handle_android_upload()['url']}
+      logging.info("Post result: " + str(result))
+      s = json.dumps(result)
+      logging.info("Post result writing is: " + str(s))
+      self.response.write(s)
 
 class DeleteArticle(webapp2.RequestHandler):
   def post(self):
