@@ -36,7 +36,15 @@ from math import sqrt
 import random
 import ImageDraw
 from PIL import Image
+import numpy as np
+import sys
+import cPickle as pickle
 
+import colormath
+
+from colormath.color_diff_matrix import delta_e_cie2000
+from colormath.color_objects import LabColor, sRGBColor, XYZColor, LabColor
+from colormath.color_conversions import convert_color
 
 APP_ID_GLOBAL = 'moonlit-shadow-813.appspot.com'
 STORAGE_ID_GLOBAL = 'moonlit-shadow-813'
@@ -78,6 +86,7 @@ class myArticle(ndb.Model):
   articledescription = ndb.StringProperty()
   articleoktosell = ndb.BooleanProperty()
   articleprivate = ndb.BooleanProperty()
+  articlecolors = ndb.StringProperty(repeated=True)
 
 class Category:
   def __init__(self, categoryName, lastUsedArticleImageUrl):
@@ -518,6 +527,11 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
   Point = namedtuple('Point', ('coords', 'n', 'ct'))
   Cluster = namedtuple('Cluster', ('points', 'center', 'n'))
 
+  lab_colors_path = os.path.join(os.path.dirname(__file__), 'pickle', 'lab-colors.pk')
+  color_reader = pickle.load(open(lab_colors_path, "rb"))
+  lab_matrix_path = os.path.join(os.path.dirname(__file__), 'pickle', 'lab-matrix.pk')
+  lab_matrix = np.load(lab_matrix_path)
+
   def get_points(self, img):
     points = []
     w, h = img.size
@@ -573,8 +587,8 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
     blob_reader = blobstore.BlobReader(blob_key)
     img = Image.open(blob_reader)
     w, h = img.size
-    logging.info("w: " + str(w))
-    logging.info("h: " + str(h))
+    #logging.info("w: " + str(w))
+    #logging.info("h: " + str(h))
     img.thumbnail((200, 200))
 
     points = self.get_points(img)
@@ -599,6 +613,35 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
     del draw
     pal.save(outfile, "PNG")
 
+  def get_color_name(self, hexcolor):
+    # load color names
+    #color_reader = pickle.load(open(self.lab_colors_path, "rb"))
+    #print color_reader
+
+    #lab_matrix = np.load(self.lab_matrix_path)
+
+    #color = LabColor(lab_l=69.34, lab_a=-0.88, lab_b=-52.57)
+    rgb = sRGBColor.new_from_rgb_hex(hexcolor)
+    logging.info(rgb)
+    #hexc = rgb_color.get_rgb_hex()
+    #print hexc
+    #xyz = convert_color(rgb, XYZColor)
+    #print xyz
+    lab = convert_color(rgb, LabColor)
+    logging.info('lab : ' + str(lab))
+    brgb = convert_color(lab, sRGBColor)
+    logging.info('lab to rgb : ' + str(brgb))
+    #lab_color_vector = np.array([color.lab_l, color.lab_a, color.lab_b])
+
+    lab_color_vector = np.array([lab.lab_l, lab.lab_a, lab.lab_b])
+    delta = delta_e_cie2000(lab_color_vector, self.lab_matrix)
+
+    logging.info('%s is closest to %s' % (lab, self.lab_matrix[np.argmin(delta)]))
+    index = np.where(self.lab_matrix == self.lab_matrix[np.argmin(delta)])[0][0]
+    #print index
+    logging.info('%s is closest to %s' % (lab, self.color_reader[index]))
+    return self.color_reader[index]
+
   def initialize(self, request, response):
       super(AndroidUploadHandler, self).initialize(request, response)
       self.response.headers['Access-Control-Allow-Origin'] = '*'
@@ -611,62 +654,70 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
 
 
   def handle_android_upload(self):
-    try:
-      articleid = self.request.headers['articleid']
-      logging.info('Article ID is: ' + str(articleid))
-      logging.info('Check if article exists')
-      present_query = myArticle.query(myArticle.articleid  == articleid)
-      existsarticle = present_query.get()
-      comments = ""
-      if not existsarticle == None:
-        imageid = str(uuid.uuid1())
-        bucket_name = os.environ.get('BUCKET_NAME', app_identity.get_default_gcs_bucket_name())
-        logging.info("My bucket name is: " + str(bucket_name))
-        bucket = '/' + bucket_name
-        filename = bucket + '/' + articleid + '/' + imageid
-        try:
-          myimagefile = self.request.get('imageFile')
-        except:
-          logging.info("Imagefile not retrieved from self.request")
-        result = {}
-        creationdate = str(datetime.datetime.now().date())
-        logging.info("starting to write file to store")
-      # Create a GCS file with GCS client.
-        with gcs.open(filename, 'w') as f:
-          f.write(myimagefile)
-      # Blobstore API requires extra /gs to distinguish against blobstore files.
-        blobstore_filename = '/gs' + filename
-        blob_key = blobstore.create_gs_key(blobstore_filename)
-        logging.info("Trying to get url for blob key: " + str(blob_key))
+    #try:
+    articleid = self.request.headers['articleid']
+    logging.info('Article ID is: ' + str(articleid))
+    logging.info('Check if article exists')
+    present_query = myArticle.query(myArticle.articleid  == articleid)
+    existsarticle = present_query.get()
+    comments = ""
+    if not existsarticle == None:
+      imageid = str(uuid.uuid1())
+      bucket_name = os.environ.get('BUCKET_NAME', app_identity.get_default_gcs_bucket_name())
+      logging.info("My bucket name is: " + str(bucket_name))
+      bucket = '/' + bucket_name
+      filename = bucket + '/' + articleid + '/' + imageid
+      try:
+        myimagefile = self.request.get('imageFile')
+      except:
+        logging.info("Imagefile not retrieved from self.request")
+      result = {}
+      creationdate = str(datetime.datetime.now().date())
+      logging.info("starting to write file to store")
+    # Create a GCS file with GCS client.
+      with gcs.open(filename, 'w') as f:
+        f.write(myimagefile)
+    # Blobstore API requires extra /gs to distinguish against blobstore files.
+      blobstore_filename = '/gs' + filename
+      blob_key = blobstore.create_gs_key(blobstore_filename)
+      logging.info("Trying to get url for blob key: " + str(blob_key))
 
-      # extract the colors from the image
-        blob_reader = blobstore.BlobReader(blob_key)
-        img = Image.open(blob_reader)
-        w, h = img.size
-        colors = self.colorz(blob_key)
-        logging.info("colors are : " + str(colors))
+    # extract the colors from the image
+      blob_reader = blobstore.BlobReader(blob_key)
+      img = Image.open(blob_reader)
+      w, h = img.size
+      hexcolors = self.colorz(blob_key)
+      logging.info("hexcolors are : " + str(hexcolors))
 
-        try:
-          result['url'] = images.get_serving_url(
-              blob_key,
-          )
-        except:
-          logging.info("Could not get serving url")
-          result['url'] = ""
-        logging.info("Result url: " + str(result['url']))
+      colors = list();
+      for color in hexcolors:
+        colorname = self.get_color_name(color)
+        logging.info("colorname: " + str(colorname))
+        colors.append(colorname)
+      logging.info("hexcolors are : " + str(colors))
 
-        myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
-        myimage.imageid = imageid
-        myimage.imagefileurl = result['url']
-        myimage.imagecreationdate = creationdate
-        myimage.imagearticleid = articleid
-        myimage.colors = colors
-        myimage.put()
-        existsarticle.articleimageurl = myimage.imagefileurl
-        existsarticle.put()
+      try:
+        result['url'] = images.get_serving_url(
+            blob_key,
+        )
+      except:
+        logging.info("Could not get serving url")
+        result['url'] = ""
+      logging.info("Result url: " + str(result['url']))
 
-    except:
-      logging.info("exception uploading files")
+      myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+      myimage.imageid = imageid
+      myimage.imagefileurl = result['url']
+      myimage.imagecreationdate = creationdate
+      myimage.imagearticleid = articleid
+      myimage.colors = colors
+      myimage.put()
+      existsarticle.articleimageurl = myimage.imagefileurl
+      existsarticle.articlecolors = myimage.colors
+      existsarticle.put()
+
+    #except:
+      #logging.info("exception uploading files")
 
     return result
 
@@ -782,7 +833,7 @@ class ReadArticle(webapp2.RequestHandler):
       logging.info('Created query')
       try:
         existsarticle = present_query.get()
-        returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articlePrivate':existsarticle.articleprivate}
+        returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articlePrivate':existsarticle.articleprivate,'articleColors':existsarticle.articlecolors}
         logging.info('Query returned: ' + str(existsarticle))
         result = json.dumps(returnarticle)
       except:
@@ -1299,11 +1350,11 @@ class GetCategory(webapp2.RequestHandler):
               for thisowner in emailfilter:
                 if existsarticle.articleowner == thisowner:
                   logging.info('article private: ' + str(existsarticle.articleprivate))
-                  returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate, 'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+                  returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate, 'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articlecolors':existsarticle.articlecolors}
             else:
               if existsarticle.articleowner == emailfilter:
                 logging.info('found match')
-                returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+                returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articlecolors':existsarticle.articlecolors}
           else:
             logging.info('article private: ' + str(existsarticle.articleprivate))
             returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articlePrivate':existsarticle.articleprivate,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
@@ -1742,6 +1793,67 @@ class GetUserAccount(webapp2.RequestHandler):
       result = json.dumps({'errorcode':1})
     self.response.write(result)
 
+class FindMatch(webapp2.RequestHandler):
+  def post(self):
+    data = json.loads(self.request.body)
+    logging.info('Json data sent to this function: ' + str(data))
+
+    origarticle = data['articleId']
+    category = data['category']
+    #TODO: add email filter
+
+    matchedarticles = list();
+    present_query = myArticle.query(myArticle.articletype == data['category'])
+    categoryarticles = present_query.fetch()
+    logging.info("category articles: " + str(categoryarticles))
+
+    # get the colors of the original item
+    ori_image_query = articleImage.query(articleImage.imagearticleid == data['articleId'])
+    oriimage = ori_image_query.get()
+    if (not oriimage == None):
+      logging.info("original image is : " + str(oriimage))
+      originalcolors = oriimage.colors
+      logging.info("original image colors are : " + str(originalcolors))
+      #get original image's nearest colors name
+      #originalcolorsnames = list()
+      #for hexcolor in originalcolors:
+       # colorname = self.get_color_name(hexcolor)
+       # logging.info("colorname: " + str(colorname))
+       # originalcolorsnames.append(colorname)
+     # logging.info("original image colors name are : " + str(originalcolorsnames))
+
+    else:
+      logging.info('no image found for this article')
+
+    # find all the matches
+    currentarticle = {}
+    for article in categoryarticles:
+      currentarticle = {'articleName':article.articlename,'articleOwner':article.articleowner,'articlePrivate':article.articleprivate,'articleId':article.articleid,'articleType':article.articletype,'articleImageUrl':article.articleimageurl,'articleLastUsed':article.articlelastused,'articleTimesUsed':article.articletimesused,'articleTags':article.articletags,'articlePrice':article.articleprice,'articleDescription':article.articledescription,'articleOkToSell':article.articleoktosell}
+      logging.info("current article name: " + str(article.articlename))
+      #load current image and get colors array
+      #logging.info("article image url: " + str(article.articleimageurl))
+      image_query = articleImage.query(articleImage.imagefileurl == article.articleimageurl)
+      currentimage = image_query.get()
+      if (not currentimage == None):
+        #logging.info("current image is : " + str(currentimage))
+        currentcolors = currentimage.colors
+        logging.info("current image colors are : " + str(currentcolors))
+        matched = 'false'
+        for oricolor in originalcolors:
+          if oricolor in currentcolors:
+            logging.info("match found: " + str(oricolor))
+            matched = 'true'
+        if not matched == 'false':
+          matchedarticles.append(currentarticle)
+          logging.info("matched article: " + str(article.articlename))
+      else:
+        logging.info('no image found for this article')  
+
+    payload = {'articleList':matchedarticles}
+    logging.info("MatchedResultList: " + str(matchedarticles))
+
+    result = json.dumps(payload)
+    self.response.write(result)
 
 app = webapp2.WSGIApplication([
     webapp2.Route('/', MainHandler, name='home'),
@@ -1776,7 +1888,8 @@ app = webapp2.WSGIApplication([
     ('/GetCategories', GetCategories),
     ('/GetCategory', GetCategory),
     ('/CreateProfile', CreateProfile),
-    ('/GetUserAccount', GetUserAccount)
+    ('/GetUserAccount', GetUserAccount),
+    ('/FindMatch', FindMatch)
 ], debug=True, config=config)
 
 logging.getLogger().setLevel(logging.DEBUG)
