@@ -56,3 +56,5 @@ libraries:
   version: latest
 - name: PIL
   version: latest
+- name: numpy
+  version: latest

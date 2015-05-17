@@ -975,6 +975,15 @@ class UpdateArticle(webapp2.RequestHandler):
           except:
             pass
           try:
+            colorstemp = data['articleColors']
+            if type(colorstemp) == list:
+              logging.info('colors already a list, do nothing')
+            else:
+              data['articleColors'] = [data['articleColors']]
+              logging.info('make colors a list: ' + str(data['articleColors']))
+          except:
+            pass
+          try:
             usedlisttemp = data['articleLastUsed']
             if type(usedlisttemp) == list:
               logging.info('used list already a list, do nothing')
@@ -1040,9 +1049,21 @@ class UpdateArticle(webapp2.RequestHandler):
                 logging.info('tag temp is nowC' + str(data['articleTags']))
               else:
                 logging.info('Didnt get any tags')
+            colorstemp = self.request.get('articleColors')
+            if type(colorstemp) == list:
+              logging.info('colors temp is a list')
+              data['articleColors'] = colorstemp
+            else:
+              if not colorstemp == "":
+                logging.info('colors temp is a string, and not empty making a list')
+                data['articleColors'] = [colorstemp]
+                logging.info('colors temp is now' + str(data['articleColors']))
+              else:
+                logging.info('Didnt get any colors')
           else:
             data['articleLastUsed'] = self.request.get('articleLastUsed')
             data['articleTags'] = self.request.get('articleTags')
+            data['articleColors'] = self.request.get('articleColors')
         data['articlePrice'] = self.request.get('articlePrice')
         data['articleDescription'] = self.request.get('articleDescription')
         data['articleOkToSell'] = self.request.get('articleOkToSell')
@@ -1099,6 +1120,12 @@ class UpdateArticle(webapp2.RequestHandler):
                   fieldsupdated.append('articleTags')
               except:
                 logging.info('no article tags set')
+              try:
+                  logging.info("Replacing whole colorslist.")
+                  existsarticle.articlecolors = data['articleColors']
+                  fieldsupdated.append('articleColors')
+              except:
+                logging.info('no article colors set')
             else:
               try:
                 if not data['articleLastUsed'] == "":
@@ -1118,6 +1145,15 @@ class UpdateArticle(webapp2.RequestHandler):
                   templist.append(data['articleTags'])
                   existsarticle.articletags = templist
                   fieldsupdated.append('articleTags')
+              except:
+                logging.info('no value for article tags set')
+              try:
+                if not data['articleColors'] == "":
+                  logging.info('Appending item to colors list')
+                  templist = existsarticle.articlecolors
+                  templist.append(data['articleColors'])
+                  existsarticle.articlecolors = templist
+                  fieldsupdated.append('articleColors')
               except:
                 logging.info('no value for article tags set')
           else:
