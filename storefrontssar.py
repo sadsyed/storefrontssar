@@ -36,9 +36,13 @@ from math import sqrt
 import random
 import ImageDraw
 from PIL import Image
+import PIL
+from PIL import ImageFilter
+import PIL.ImageOps
 import numpy as np
 import sys
 import cPickle as pickle
+#import pgmagick as pg
 
 import colormath
 
@@ -596,7 +600,21 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
     clusters = self.kmeans(points, n, 1)
     #logging.info("clusters: " + str(clusters))
     rgbs = [map(int, c.center.coords) for c in clusters]
-    logging.info("rgbs: " + str(rgbs))
+    #logging.info("rgbs: " + str(rgbs))
+    return map(self.rtoh, rgbs)
+
+  def get_colors(self, img, n=3):
+    w, h = img.size
+    #logging.info("w: " + str(w))
+    #logging.info("h: " + str(h))
+    img.thumbnail((200, 200))
+
+    points = self.get_points(img)
+    #logging.info("points: " + str(points))
+    clusters = self.kmeans(points, n, 1)
+    #logging.info("clusters: " + str(clusters))
+    rgbs = [map(int, c.center.coords) for c in clusters]
+    #logging.info("rgbs: " + str(rgbs))
     return map(self.rtoh, rgbs)
 
   def printColors(outfile, colors, n=3):
@@ -622,25 +640,113 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
 
     #color = LabColor(lab_l=69.34, lab_a=-0.88, lab_b=-52.57)
     rgb = sRGBColor.new_from_rgb_hex(hexcolor)
-    logging.info(rgb)
+    #logging.info(rgb)
     #hexc = rgb_color.get_rgb_hex()
     #print hexc
     #xyz = convert_color(rgb, XYZColor)
     #print xyz
     lab = convert_color(rgb, LabColor)
-    logging.info('lab : ' + str(lab))
+    #logging.info('lab : ' + str(lab))
     brgb = convert_color(lab, sRGBColor)
-    logging.info('lab to rgb : ' + str(brgb))
+    #logging.info('lab to rgb : ' + str(brgb))
     #lab_color_vector = np.array([color.lab_l, color.lab_a, color.lab_b])
 
     lab_color_vector = np.array([lab.lab_l, lab.lab_a, lab.lab_b])
     delta = delta_e_cie2000(lab_color_vector, self.lab_matrix)
 
-    logging.info('%s is closest to %s' % (lab, self.lab_matrix[np.argmin(delta)]))
+    #logging.info('%s is closest to %s' % (lab, self.lab_matrix[np.argmin(delta)]))
     index = np.where(self.lab_matrix == self.lab_matrix[np.argmin(delta)])[0][0]
     #print index
-    logging.info('%s is closest to %s' % (lab, self.color_reader[index]))
+    #logging.info('%s is closest to %s' % (lab, self.color_reader[index]))
     return self.color_reader[index]
+
+  # def trans_mask_sobel(self, img):
+  #   #image = pg.Image(img)
+  #   image = img
+    
+  #   #Find object
+  #   image.negate()
+  #   image.edge()
+  #   image.blur(1)
+  #   image.threshold(24)
+  #   image.adaptiveThreshold(5, 5, 5)
+
+  #   #Fill background
+  #   image.fillColor('magenta')
+  #   w, h = image.size().width(), image.size().height()
+  #   image.floodFillColor('0x0', 'magenta')
+  #   image.floodFillColor('0x0+%s+0' % (w-1), 'magenta')
+  #   image.floodFillColor('0x0+0+%s' % (h-1), 'magenta')
+  #   image.floodFillColor('0x0+%s+%s' % (w-1, h-1), 'magenta')
+
+  #   image.transparent('magenta')
+  #   return image
+
+  # def alpha_composite(self, image, mask):
+  #   compos = pg.Image(mask)
+  #   compos.composite(
+  #       image,
+  #       image.size(),
+  #       pg.CompositeOperator.CopyOpacityCompositeOp
+  #   )
+  #   return compos
+
+  # def remove_background(self, blob_key):
+  #   blob_reader = blobstore.BlobReader(blob_key)
+  #   img = Image.open(blob_reader)
+
+  #   transmask = self.trans_mask_sobel(img)
+  #   #img = alphacomposite(transmask, img)
+  #   #img.trim()
+
+  #   hexcolors = self.get_colorz(img)
+  #   logging.info("hexcolors are : " + str(hexcolors))
+  #   return hexcolors
+
+  def remove_background_pil(self, blob_key):
+      blob_reader = blobstore.BlobReader(blob_key)
+      image = Image.open(blob_reader)
+
+      inverted_image = PIL.ImageOps.invert(image)
+
+      edged = inverted_image.filter(ImageFilter.EDGE_ENHANCE)
+
+      #image.blur()
+      blurred = edged.filter(ImageFilter.BLUR)
+
+      threshold = 24
+      thresholded = blurred.point(lambda p: p > threshold and 255)
+
+      # #fillColor
+      #image = Image.new(mode='RGBA', size=thresholded.size, color=(255,0,255))
+      #image.paste(thresholded, (0,0))
+
+      image = thresholded
+      maskColor = (255,0,255)
+      w, h = image.size
+      ImageDraw.floodfill(image, (0,0), maskColor)
+      second = 0+(w-1)+0
+      ImageDraw.floodfill(image, (0,second), maskColor)
+      second = 0+0+(h-1)
+      ImageDraw.floodfill(image, (0,second), maskColor)
+      second = 0+0+(w-1)+(h-1)
+      ImageDraw.floodfill(image, (0,second), maskColor)
+
+      # image = image.convert('RGBA')
+
+      # #image.transparent('magenta')
+      # pixdata = image.load()
+      # for y in xrange(image.size[1]):
+      #     for x in xrange(image.size[0]):
+      #         if pixdata[x, y] == (255, 0, 255):
+      #             pixdata[x, y] = (255, 255, 255)
+      # #image.show()
+
+      # #composite
+      # original_image = image.covert('RGBA')
+      # img = Image.blend(original_image, image, 0.2)
+
+      #get colors
 
   def initialize(self, request, response):
       super(AndroidUploadHandler, self).initialize(request, response)
@@ -683,18 +789,28 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
       logging.info("Trying to get url for blob key: " + str(blob_key))
 
     # extract the colors from the image
-      blob_reader = blobstore.BlobReader(blob_key)
-      img = Image.open(blob_reader)
-      w, h = img.size
-      hexcolors = self.colorz(blob_key)
-      logging.info("hexcolors are : " + str(hexcolors))
+      # get image 
+      #blob_reader = blobstore.BlobReader(blob_key)
+      #img = Image.open(blob_reader)
+      #w, h = img.size
+      
+      #hexcolors = self.remove_background(blob_key)
+      #hexcolors = self.remove_background_pil(blob_key)
+      #logging.info("removed background, now hexcolors are : " + str(hexcolors))
 
-      colors = list();
-      for color in hexcolors:
-        colorname = self.get_color_name(color)
-        logging.info("colorname: " + str(colorname))
-        colors.append(colorname)
-      logging.info("hexcolors are : " + str(colors))
+      # find hex colors
+      #hexcolors = self.colorz(blob_key)
+      #logging.info("hexcolors are : " + str(hexcolors))
+
+      # get color names
+      colors = list()
+      colors.append("white")
+      
+      #for color in hexcolors:
+      #  colorname = self.get_color_name(color)
+      #  logging.info("colorname: " + str(colorname))
+      #  colors.append(colorname)
+      #logging.info("colors are : " + str(colors))
 
       try:
         result['url'] = images.get_serving_url(
@@ -710,10 +826,10 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
       myimage.imagefileurl = result['url']
       myimage.imagecreationdate = creationdate
       myimage.imagearticleid = articleid
-      myimage.colors = colors
+      #myimage.colors = colors
       myimage.put()
       existsarticle.articleimageurl = myimage.imagefileurl
-      existsarticle.articlecolors = myimage.colors
+      existsarticle.articlecolors = colors
       existsarticle.put()
 
     #except:
@@ -1891,6 +2007,97 @@ class FindMatch(webapp2.RequestHandler):
     result = json.dumps(payload)
     self.response.write(result)
 
+class UpdateArticleImageColors(webapp2.RequestHandler):
+  lab_colors_path = os.path.join(os.path.dirname(__file__), 'pickle', 'lab-colors.pk')
+  color_reader = pickle.load(open(lab_colors_path, "rb"))
+  lab_matrix_path = os.path.join(os.path.dirname(__file__), 'pickle', 'lab-matrix.pk')
+  lab_matrix = np.load(lab_matrix_path)
+
+  def get_color_name(self, hexcolor):
+    # load color names
+    #color_reader = pickle.load(open(self.lab_colors_path, "rb"))
+    #print color_reader
+
+    #lab_matrix = np.load(self.lab_matrix_path)
+
+    #color = LabColor(lab_l=69.34, lab_a=-0.88, lab_b=-52.57)
+    rgb = sRGBColor.new_from_rgb_hex(hexcolor)
+    #logging.info(rgb)
+    #hexc = rgb_color.get_rgb_hex()
+    #print hexc
+    #xyz = convert_color(rgb, XYZColor)
+    #print xyz
+    lab = convert_color(rgb, LabColor)
+    #logging.info('lab : ' + str(lab))
+    brgb = convert_color(lab, sRGBColor)
+    #logging.info('lab to rgb : ' + str(brgb))
+    #lab_color_vector = np.array([color.lab_l, color.lab_a, color.lab_b])
+
+    lab_color_vector = np.array([lab.lab_l, lab.lab_a, lab.lab_b])
+    delta = delta_e_cie2000(lab_color_vector, self.lab_matrix)
+
+    #logging.info('%s is closest to %s' % (lab, self.lab_matrix[np.argmin(delta)]))
+    index = np.where(self.lab_matrix == self.lab_matrix[np.argmin(delta)])[0][0]
+    #print index
+    #logging.info('%s is closest to %s' % (lab, self.color_reader[index]))
+    return self.color_reader[index]
+
+  def post(self):
+    data = json.loads(self.request.body)
+    logging.info('Json data sent to this function: ' + str(data))
+
+    present_query = myArticle.query(myArticle.articleid == data['articleId'])
+    logging.info('Created query')
+    
+    try:
+      existsarticle = present_query.get()
+      logging.info('Query returned: ' + str(existsarticle))
+      #try:
+      logging.info("Replacing whole colorslist.")
+      logging.info('Before Update: existsarticle.articlecolors = ' + str(existsarticle.articlecolors))
+      colorstemp = data['imageColors']
+
+      # colors = list()
+      # hexcolors = data['imageColors']
+      # logging.info('hexcolors: ' + str(hexcolors))
+      # for color in hexcolors:
+      #   logging.info('processing hexcolor: ' + str(color))
+      #   colorname = self.get_color_name(color)
+      #   logging.info("colorname: " + str(colorname))
+      #   colors.append(colorname)
+      # logging.info("colors are : " + str(colors))
+
+      if type(colorstemp) == list:
+        logging.info('colors already a list, do nothing')
+      else:
+        data['imageColors'] = [data['imageColors']]
+        logging.info('make colors a list: ' + str(data['imageColors']))
+
+      colors = list()
+      hexcolors = data['imageColors']
+      logging.info('hexcolors: ' + str(hexcolors))
+      for color in hexcolors:
+        logging.info('processing hexcolor: ' + str(color))
+        colorname = self.get_color_name(color)
+        logging.info("colorname: " + str(colorname))
+        colors.append(colorname)
+      logging.info("colors are : " + str(colors))
+
+      existsarticle.articlecolors = colors
+      logging.info('After Update: existsarticle.articlecolors = ' + str(existsarticle.articlecolors))
+      existsarticle.put()
+      result = {'errorcode': 0}
+      #except:
+      #  logging.info('no article colors set')
+      #  result = {'errorcode':7}  
+    except:
+      pass
+      result = {'errorcode':8}  
+      
+    result = json.dumps(result)
+    logging.info('Result writing: ' + str(result))
+    self.response.write(result)
+
 app = webapp2.WSGIApplication([
     webapp2.Route('/', MainHandler, name='home'),
     webapp2.Route('/signup', SignupHandler),
@@ -1925,7 +2132,8 @@ app = webapp2.WSGIApplication([
     ('/GetCategory', GetCategory),
     ('/CreateProfile', CreateProfile),
     ('/GetUserAccount', GetUserAccount),
-    ('/FindMatch', FindMatch)
+    ('/FindMatch', FindMatch),
+    ('/UpdateArticleImageColors', UpdateArticleImageColors)
 ], debug=True, config=config)
 
 logging.getLogger().setLevel(logging.DEBUG)
