@@ -58,3 +58,5 @@ libraries:
   version: latest
 - name: numpy
   version: latest
+- name: pycrypto
+  version: "2.6"

@@ -37,7 +37,7 @@ import random
 import ImageDraw
 from PIL import Image
 import PIL
-from PIL import ImageFilter
+#from PIL import ImageFilters
 import PIL.ImageOps
 import numpy as np
 import sys
@@ -49,6 +49,9 @@ import colormath
 from colormath.color_diff_matrix import delta_e_cie2000
 from colormath.color_objects import LabColor, sRGBColor, XYZColor, LabColor
 from colormath.color_conversions import convert_color
+
+from oauth2client import client, crypt
+import httplib2
 
 APP_ID_GLOBAL = 'moonlit-shadow-813.appspot.com'
 STORAGE_ID_GLOBAL = 'moonlit-shadow-813'
@@ -1895,34 +1898,58 @@ config = {
 
 class CreateProfile(webapp2.RequestHandler):
   def post(self):
-    try:
-      data = json.loads(self.request.body)
-      logging.info('Json data sent to this function: ' + str(data))
+    data = json.loads(self.request.body)
+    logging.info('Json data sent to this function: ' + str(data))
 
-      user_name = data['username']
-      logging.info('user_name: ' + str(user_name))
-      email = data['email']
-      logging.info('email: ' + str(email))
-      name = data['name']
-      logging.info('name: ' + str(name))
-      password = data['password']
-      logging.info('password: ' + str(password))
-      last_name = data['lastname']
-      logging.info('lastname: ' +str(last_name))
+    user_name = data['username']
+    logging.info('user_name: ' + str(user_name))
+    email = data['email']
+    logging.info('email: ' + str(email))
+    # name = data['name']
+    # logging.info('name: ' + str(name))
+    # password = data['password']
+    # logging.info('password: ' + str(password))
+    # last_name = data['lastname']
+    # logging.info('lastname: ' +str(last_name))
+    
+    thisUser = smartClosetUser(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+
+    #thisUser.userPin = None
+    thisUser.userName = user_name
+    thisUser.userEmail = email
+    thisUser.userMarkdown = "0.0"
+    thisUser.put()
+    logging.info('User written to database.')
+    result = json.dumps({'errorcode':0})
+    logging.info('Create Profile successed with errorcode: ' + str(result))
+    # try:
+    #   data = json.loads(self.request.body)
+    #   logging.info('Json data sent to this function: ' + str(data))
+
+    #   user_name = data['username']
+    #   logging.info('user_name: ' + str(user_name))
+    #   email = data['email']
+    #   logging.info('email: ' + str(email))
+    #   # name = data['name']
+    #   # logging.info('name: ' + str(name))
+    #   # password = data['password']
+    #   # logging.info('password: ' + str(password))
+    #   # last_name = data['lastname']
+    #   # logging.info('lastname: ' +str(last_name))
       
-      thisUser = smartClosetUser(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+    #   thisUser = smartClosetUser(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
 
-      thisUser.userPin = None
-      thisUser.userName = name
-      thisUser.userEmail = email
-      thisUser.userMarkdown = "0.0"
-      thisUser.put()
-      logging.info('User written to database.')
-      result = json.dumps({'errorcode':0})
-      logging.info('Create Profile successed with errorcode: ' + str(result))
-    except:
-      result = json.dumps({'errorcode':1})
-      logging.info('Create Profile failed with errorcode: ' + str(result))
+    #   #thisUser.userPin = None
+    #   thisUser.userName = name
+    #   thisUser.userEmail = email
+    #   thisUser.userMarkdown = "0.0"
+    #   thisUser.put()
+    #   logging.info('User written to database.')
+    #   result = json.dumps({'errorcode':0})
+    #   logging.info('Create Profile successed with errorcode: ' + str(result))
+    # except:
+    #   result = json.dumps({'errorcode':1})
+    #   logging.info('Create Profile failed with errorcode: ' + str(result))
     self.response.write(result)
 
 class GetUserAccount(webapp2.RequestHandler):
@@ -2098,6 +2125,59 @@ class UpdateArticleImageColors(webapp2.RequestHandler):
     logging.info('Result writing: ' + str(result))
     self.response.write(result)
 
+class TokenSignin(webapp2.RequestHandler):
+  def post(self):
+    data = json.loads(self.request.body)
+    logging.info('Json data sent to TokenSignin Service: ' + str(data))
+
+    tokenId = data['tokenId']
+
+    CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+
+    # Check that the Access Token is valid
+    url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' % tokenId)
+
+    h = httplib2.Http()
+    #logging.info('Json data from googleapis : ' + str(h))
+    logging.info('Json data from googleapis: ' + str(h.request))
+    logging.info('Json data from googleapis request: ' + str(h.request(url, 'GET')))
+    result = json.loads(h.request(url, 'GET')[1].decode('utf-8'))
+
+    token_status = {}
+    access_status = {}
+    if result.get('error') is not None:
+      # This is not a valid token.
+      access_status['valid'] = False
+      access_status['gplus_id'] = None
+      access_status['message'] = 'Invalid Access Token.'
+    elif result['issued_to'] != CLIENT_ID:
+      # This is not meant for this app. It is VERY important to check
+      # the client ID in order to prevent man-in-the-middle attacks.
+      access_status['valid'] = False
+      access_status['gplus_id'] = None
+      access_status['message'] = 'Access Token not meant for this app.'
+    else:
+      access_status['valid'] = True
+      access_status['gplus_id'] = result['user_id']
+      access_status['message'] = 'Access Token is valid.'
+    token_status['access_token_status'] = access_status
+    logging.info('TokenSigin - token_status: ' + str(token_status))
+
+    #response = make_response(json.dumps(token_status, 200))
+    #response.headers['Content-Type'] = 'application/json'
+
+    result = json.dumps(token_status)
+    return self.response.write(result)
+
+    #idinfo = client.verify_id_token(tokenId, CLIENT_ID)
+    #logging.info('idinfo: ' + str(idinfo))
+
+    # try:
+    #   idinfo = client.verify_id_token(tokenId, CLIENT_ID)
+    #   logging.info('idinfo: ' + str(idinfo))
+    # except:
+    #   logging.info('Invalid Token:')
+
 app = webapp2.WSGIApplication([
     webapp2.Route('/', MainHandler, name='home'),
     webapp2.Route('/signup', SignupHandler),
@@ -2133,7 +2213,8 @@ app = webapp2.WSGIApplication([
     ('/CreateProfile', CreateProfile),
     ('/GetUserAccount', GetUserAccount),
     ('/FindMatch', FindMatch),
-    ('/UpdateArticleImageColors', UpdateArticleImageColors)
+    ('/UpdateArticleImageColors', UpdateArticleImageColors),
+    ('/TokenSignin', TokenSignin)
 ], debug=True, config=config)
 
 logging.getLogger().setLevel(logging.DEBUG)
