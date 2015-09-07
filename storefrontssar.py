@@ -1453,11 +1453,59 @@ class GetSaleCategories2(webapp2.RequestHandler):
       self.response.write(result)
 
 class GetCategories(webapp2.RequestHandler):
+    def authenticate_user(self, tokenId):
+      CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+
+      # Check that the Access Token is valid
+      url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' % tokenId)
+
+      h = httplib2.Http()
+      #logging.info('Json data from googleapis : ' + str(h))
+      logging.info('Json data from googleapis: ' + str(h.request))
+      logging.info('Json data from googleapis request: ' + str(h.request(url, 'GET')))
+      result = json.loads(h.request(url, 'GET')[1].decode('utf-8'))
+
+      token_status = {}
+      access_status = {}
+      if result.get('error') is not None:
+        # This is not a valid token.
+        access_status['valid'] = False
+        access_status['gplus_id'] = None
+        access_status['message'] = 'Invalid Access Token.'
+      elif result['issued_to'] != CLIENT_ID:
+        # This is not meant for this app. It is VERY important to check
+        # the client ID in order to prevent man-in-the-middle attacks.
+        access_status['valid'] = False
+        access_status['gplus_id'] = None
+        access_status['message'] = 'Access Token not meant for this app.'
+      else:
+        access_status['valid'] = True
+        access_status['gplus_id'] = result['user_id']
+        access_status['message'] = 'Access Token is valid.'
+      token_status['access_token_status'] = access_status
+      logging.info('TokenSigin - token_status: ' + str(token_status))
+
+      logging.info('access_status: ' + str(access_status['valid']))
+      # if access_status[valid]
+      #   logging.info('Woohooo, token is valid')
+      #   return true;
+      # else
+      #   return false;
+      return access_status['valid']
+
     def post(self):
+      data = json.loads(self.request.body)
+      logging.info('Json data sent to GetCategories: ' + str(data))
+
+      tokenId = data['tokenId']
+      isValidUser = self.authenticate_user(tokenId)
+      logging.info('isValidUser: ' + str(isValidUser))
+
       emailfilter = None
       try:
         data = json.loads(self.request.body)
         emailfilter = data['emailFilter']
+        tokenId = data['tokenId']
       except:
         logging.info("No json data, no email filter.")
       allarticle_query = myArticle.query().order(myArticle.articletimesused)
@@ -1466,9 +1514,15 @@ class GetCategories(webapp2.RequestHandler):
       for thisarticle in allarticlesbyused:
         if not emailfilter == None:
           try:
-            logging.info('trying to add for owner: ' + emailfilter + ' article is: ' + thisarticle.articleowner)
-            if thisarticle.articleowner == emailfilter: 
-              currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+            if isValidUser:
+              logging.info('trying to add for owner: ' + emailfilter + ' article is: ' + thisarticle.articleowner)
+              if thisarticle.articleowner == emailfilter: 
+                currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
+            #authenticate using user tokenId
+            # if self.authenticate_user(tokenId):
+            #   logging.info('trying to add for owner: ' + emailfilter + ' article is: ' + thisarticle.articleowner)
+            #   if thisarticle.articleowner == emailfilter: 
+            #     currentcategories[thisarticle.articletype] = Category(thisarticle.articletype, thisarticle.articleimageurl)
           except:
             for thisowner in emailfilter:
               logging.info('is list, owner is: ' + thisowner)
@@ -2071,7 +2125,7 @@ class UpdateArticleImageColors(webapp2.RequestHandler):
 
   def post(self):
     data = json.loads(self.request.body)
-    logging.info('Json data sent to this function: ' + str(data))
+    logging.info('Json data sent to UpdateArticleImageColors: ' + str(data))
 
     present_query = myArticle.query(myArticle.articleid == data['articleId'])
     logging.info('Created query')
@@ -2124,6 +2178,47 @@ class UpdateArticleImageColors(webapp2.RequestHandler):
     result = json.dumps(result)
     logging.info('Result writing: ' + str(result))
     self.response.write(result)
+
+class TokenAuthentication():
+  def authenticate_user(self, tokenId):
+    CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+
+    # Check that the Access Token is valid
+    url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' % tokenId)
+
+    h = httplib2.Http()
+    #logging.info('Json data from googleapis : ' + str(h))
+    logging.info('Json data from googleapis: ' + str(h.request))
+    logging.info('Json data from googleapis request: ' + str(h.request(url, 'GET')))
+    result = json.loads(h.request(url, 'GET')[1].decode('utf-8'))
+
+    token_status = {}
+    access_status = {}
+    if result.get('error') is not None:
+      # This is not a valid token.
+      access_status['valid'] = False
+      access_status['gplus_id'] = None
+      access_status['message'] = 'Invalid Access Token.'
+    elif result['issued_to'] != CLIENT_ID:
+      # This is not meant for this app. It is VERY important to check
+      # the client ID in order to prevent man-in-the-middle attacks.
+      access_status['valid'] = False
+      access_status['gplus_id'] = None
+      access_status['message'] = 'Access Token not meant for this app.'
+    else:
+      access_status['valid'] = True
+      access_status['gplus_id'] = result['user_id']
+      access_status['message'] = 'Access Token is valid.'
+    token_status['access_token_status'] = access_status
+    logging.info('TokenSigin - token_status: ' + str(token_status))
+
+    logging.info('access_status: ' + str(access_status['valid']))
+
+    # if access_status[valid]
+    #   logging.info('Woohooo, token is valid')
+    #   return true;
+    # else
+    #   return false;
 
 class TokenSignin(webapp2.RequestHandler):
   def post(self):
