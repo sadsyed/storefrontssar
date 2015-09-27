@@ -34,9 +34,9 @@ import string
 from collections import namedtuple
 from math import sqrt
 import random
-import ImageDraw
-from PIL import Image
+#import ImageDraw
 import PIL
+from PIL import Image
 #from PIL import ImageFilters
 import PIL.ImageOps
 import numpy as np
@@ -498,12 +498,13 @@ class CreateArticle(webapp2.RequestHandler):
           logging.info('After article type')
           #TODO: Create a list processor for tags
           tags = list()
+          #TODO: tags should be optional
           tags.append(data['articleTags'])
-          logging.info('pulled tag list')
+          logging.info('pulled tag list: ' + str(tags))
           thisArticle.articletags = tags
           logging.info('done with taglist')
           #TODO: Process price
-          val = 0.0
+          val = 0.
           try:
             val = int(data['articlePrice'])
           except ValueError:
@@ -513,10 +514,12 @@ class CreateArticle(webapp2.RequestHandler):
           oktosell = False
           if data['articleOkToSell'] == 'true':
             oktosell = True
+          logging.info("Got article OkToSell: " + str(oktosell))
           thisArticle.articleoktosell = oktosell
           aprivate = False
           if data['articlePrivate'] == 'true':
             aprivate = True
+          logging.info("Got article private: " + str(aprivate))
           thisArticle.articleprivate = aprivate
           logging.info('This article: ' + str(thisArticle))
           thisArticle.put()
@@ -620,19 +623,19 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
     #logging.info("rgbs: " + str(rgbs))
     return map(self.rtoh, rgbs)
 
-  def printColors(outfile, colors, n=3):
-    swatchsize = 80
-    pal = Image.new('RGB', (swatchsize*n, swatchsize))
-    draw = ImageDraw.Draw(pal)
+  # def printColors(outfile, colors, n=3):
+  #   swatchsize = 80
+  #   pal = Image.new('RGB', (swatchsize*n, swatchsize))
+  #   draw = ImageDraw.Draw(pal)
 
-    posx = 0
-    for col in colors:
-        print col
-        draw.rectangle([posx, 0, posx+swatchsize, swatchsize], fill=col)
-        posx = posx + swatchsize
+  #   posx = 0
+  #   for col in colors:
+  #       print col
+  #       draw.rectangle([posx, 0, posx+swatchsize, swatchsize], fill=col)
+  #       posx = posx + swatchsize
 
-    del draw
-    pal.save(outfile, "PNG")
+  #   del draw
+  #   pal.save(outfile, "PNG")
 
   def get_color_name(self, hexcolor):
     # load color names
@@ -706,34 +709,34 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
   #   logging.info("hexcolors are : " + str(hexcolors))
   #   return hexcolors
 
-  def remove_background_pil(self, blob_key):
-      blob_reader = blobstore.BlobReader(blob_key)
-      image = Image.open(blob_reader)
+  # def remove_background_pil(self, blob_key):
+  #     blob_reader = blobstore.BlobReader(blob_key)
+  #     image = Image.open(blob_reader)
 
-      inverted_image = PIL.ImageOps.invert(image)
+  #     inverted_image = PIL.ImageOps.invert(image)
 
-      edged = inverted_image.filter(ImageFilter.EDGE_ENHANCE)
+  #     edged = inverted_image.filter(ImageFilter.EDGE_ENHANCE)
 
-      #image.blur()
-      blurred = edged.filter(ImageFilter.BLUR)
+  #     #image.blur()
+  #     blurred = edged.filter(ImageFilter.BLUR)
 
-      threshold = 24
-      thresholded = blurred.point(lambda p: p > threshold and 255)
+  #     threshold = 24
+  #     thresholded = blurred.point(lambda p: p > threshold and 255)
 
-      # #fillColor
-      #image = Image.new(mode='RGBA', size=thresholded.size, color=(255,0,255))
-      #image.paste(thresholded, (0,0))
+  #     # #fillColor
+  #     #image = Image.new(mode='RGBA', size=thresholded.size, color=(255,0,255))
+  #     #image.paste(thresholded, (0,0))
 
-      image = thresholded
-      maskColor = (255,0,255)
-      w, h = image.size
-      ImageDraw.floodfill(image, (0,0), maskColor)
-      second = 0+(w-1)+0
-      ImageDraw.floodfill(image, (0,second), maskColor)
-      second = 0+0+(h-1)
-      ImageDraw.floodfill(image, (0,second), maskColor)
-      second = 0+0+(w-1)+(h-1)
-      ImageDraw.floodfill(image, (0,second), maskColor)
+  #     image = thresholded
+  #     maskColor = (255,0,255)
+  #     w, h = image.size
+  #     ImageDraw.floodfill(image, (0,0), maskColor)
+  #     second = 0+(w-1)+0
+  #     ImageDraw.floodfill(image, (0,second), maskColor)
+  #     second = 0+0+(h-1)
+  #     ImageDraw.floodfill(image, (0,second), maskColor)
+  #     second = 0+0+(w-1)+(h-1)
+  #     ImageDraw.floodfill(image, (0,second), maskColor)
 
       # image = image.convert('RGBA')
 

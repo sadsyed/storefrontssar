@@ -2,9 +2,12 @@ application: moonlit-shadow-813
 version: 1
 runtime: python27
 api_version: 1
-threadsafe: yes
+threadsafe: false
 
 handlers:
+- url: /test.*
+  script: gaeunit.py
+
 - url: /css
   static_dir: css
 
@@ -60,3 +63,5 @@ libraries:
   version: latest
 - name: pycrypto
   version: "2.6"
+- name: django
+  version: latest
