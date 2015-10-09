@@ -2,7 +2,6 @@
 
 {% block maincontent %}
 <div class="container">
-	<h3>Login</h3>
 
 {% if failed %}
 
@@ -10,12 +9,37 @@
 
 {% endif %} 
     <div class="row">
-      <form class="form_container" action= "/login" method="POST">
-	    Username:    <br><input type="text" value="{{ username }}" name="username" padding-left:10em /><br>
-	    Password:    <br><input type="password" name="password" padding-left:10em /><br><br>
-	    <button class="btn btn-primary" type="submit" class="btn">Login</button>
-      </form>
-      <a href="/forgot">Forgot password</a>
+      <div class="g-signin2" data-onsuccess="onSignIn"  data-width="200", data-height="50", data-longtitle="true" data-theme="dark"></div>
+      <script>
+        function onSignIn(googleUser) {
+          //Useful data for your client-side scripts:
+          var profile = googleUser.getBasicProfile();
+          console.debug("ID: " + profile.getId());
+          console.debug("Name: " + profile.getName());
+          console.debug("Image URL: " + profile.getImageUrl());
+          console.debug("Email: " + profile.getEmail());
+
+          // The ID token you need to pass to your backend:
+          var id_token = googleUser.getAuthResponse().id_token;
+          console.debug("ID Token: " + id_token);
+
+          var data = {};
+          data['idtoken'] = id_token;
+
+          //construct an HTTP request
+          var xhr = new XMLHttpRequest();
+          xhr.open('POST', 'https://moonlit-shadow-813.appspot.com/WebTokenSignin');
+          xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+
+          //send the collected id_token data as JSON
+          xhr.send(JSON.stringify(data));
+
+          xhr.onload = function() {
+            console.debug('Signed in as: ' + xhr.responseText);
+            window.location="https://moonlit-shadow-813.appspot.com/";
+          };
+        };
+      </script>
     </div>
   </div>
 </div>

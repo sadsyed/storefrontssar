@@ -314,7 +314,6 @@ class SignupHandler(BaseHandler):
     msg = "Verification message has been sent to: " + email
     self.display_message(msg)
 
-
 class ForgotPasswordHandler(BaseHandler):
   def get(self):
     self._serve_page()
@@ -437,7 +436,7 @@ class LoginHandler(BaseHandler):
     try:
       u = self.auth.get_user_by_password(username, password, remember=True,
         save_session=True)
-      self.redirect(self.uri_for('authenticated'))
+      self.redirect(self.uri_for('authenticate'))
     except (InvalidAuthIdError, InvalidPasswordError) as e:
       logging.info('Login failed for user %s because of %s', username, type(e))
       self._serve_page(True)
@@ -453,7 +452,22 @@ class LoginHandler(BaseHandler):
 class LogoutHandler(BaseHandler):
   def get(self):
     self.auth.unset_session()
-    self.redirect(self.uri_for('home'))
+    self.redirect(self.uri_for('signout'))
+
+class SignoutHandler(BaseHandler):
+  def get(self):
+    self.render_template('signout.html')
+
+class MessageHandler(BaseHandler):
+  def post(self):
+    data = json.loads(self.request.body)
+    logging.info('Json data sent to this function: ' + str(data))
+
+    params = {
+      'message': data['message']
+    }
+    self.render_template('message.html', params)
+    return
 
 class AuthenticatedHandler(BaseHandler):
   @user_required
@@ -2009,6 +2023,59 @@ class CreateProfile(webapp2.RequestHandler):
     #   logging.info('Create Profile failed with errorcode: ' + str(result))
     self.response.write(result)
 
+class CreateUserHandler(BaseHandler):
+
+  def post(self):
+    data = json.loads(self.request.body)
+    logging.info('Json data sent to CreateUser service: ' + str(data))
+
+    userid = data['id']
+    username = data['name']
+    email = data['email']
+    idtoken = data['idtoken']
+
+    unique_properties = ['email_address']
+    user_data = self.user_model.create_user(username, unique_properties, email_address=email, name=username)
+    logging.info('User data: ' + str(user_data))
+
+    if not user_data[0]:
+      logging.info('Duplicate user found: ')
+      msg = "Duplicate user exists"
+      result = json.dumps({'errorcode': 1, 'errormsg': msg})
+      logging.info('Message: ' + str(result))
+      
+    # #authenticate the user
+
+    # # if user is authenticated then create new user account 
+
+    logging.info('Creating new user account in the database')
+
+    try:
+      newUser = smartClosetUser(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+
+      newUser.userName = username
+      newUser.userEmail = email
+      newUser.userPin = userid
+      newUser.put()
+      logging.info('New user written to the database.')
+      result = json.dumps({'errorcode':0})
+      logging.info('Create User successed with errorcode: ' + str(result))
+
+      msg = "New user created successfully: " + email
+      result = json.dumps({'errorcode': 0, 'errormsg': msg})
+      logging.info('Message:' + str(result))
+
+      # if user account is successfully created redirect to home page
+
+    except:
+      logging.info('New user account failed with errorcode: ' + str(result))
+      msg = "New user account creation failed."
+      result = json.dumps({'errorcode':1, 'errormsg': msg})
+
+    self.response.write(result)
+    
+    # self.display_message(msg)
+
 class GetUserAccount(webapp2.RequestHandler):
   def post(self):
     try:
@@ -2276,6 +2343,33 @@ class TokenSignin(webapp2.RequestHandler):
     # except:
     #   logging.info('Invalid Token:')
 
+class WebTokenSignin(webapp2.RequestHandler):
+  def post(self):
+    data = json.loads(self.request.body)
+    logging.info('Json data sent to WebTokenSignin Service: ' + str(data))
+
+    tokenId = data['idtoken']
+
+    WEB_CLIENT_ID = "40560021354-k08ugq82ifbisuc8k0nh79pv91jhcmq2.apps.googleusercontent.com"
+
+    try:
+      idinfo = client.verify_id_token(tokenId, WEB_CLIENT_ID)
+      if idinfo['aud'] not in [WEB_CLIENT_ID]:
+        raise crypt.AppIdentityError("Unrecognized client.")
+      if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+        raise crypt.AppIdentityError("Wrong issuer.")
+      # if idinfo['hd'] != APPS_DOMAIN_NAME:
+      #   raise crypt.AppIdentityError("Wrong hosted domain.")
+    except crypt.AppIdentityError:
+      # Invalid token
+      logging.info('invalid token')
+
+    userid = idinfo['sub']
+
+    result = json.dumps(userid)
+    logging.info('userid: ' + str(result))
+    return self.response.write(result)
+
 app = webapp2.WSGIApplication([
     webapp2.Route('/', MainHandler, name='home'),
     webapp2.Route('/signup', SignupHandler),
@@ -2289,6 +2383,8 @@ app = webapp2.WSGIApplication([
     webapp2.Route('/forgot', ForgotPasswordHandler, name='forgot'),
     webapp2.Route('/GetAccountSettings', GetAccountSettings),
     webapp2.Route('/authenticated', AuthenticatedHandler, name='authenticated'),
+    webapp2.Route('/signout', SignoutHandler, name='signout'),
+    webapp2.Route('/CreateUser', CreateUserHandler, name='CreateUser'),
     ('/GetMerch', GetMerch),
     ('/ConfigureAccount', ConfigureAccount),
     ('/CreateArticle', CreateArticle),
@@ -2312,7 +2408,9 @@ app = webapp2.WSGIApplication([
     ('/GetUserAccount', GetUserAccount),
     ('/FindMatch', FindMatch),
     ('/UpdateArticleImageColors', UpdateArticleImageColors),
-    ('/TokenSignin', TokenSignin)
+    ('/TokenSignin', TokenSignin),
+    ('/WebTokenSignin', WebTokenSignin),
+    ('/MessageHandler', MessageHandler)
 ], debug=True, config=config)
 
 logging.getLogger().setLevel(logging.DEBUG)

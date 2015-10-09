@@ -4,19 +4,75 @@
 
 {% block maincontent %}
   <div class="container">
-	<h3>Register a new user</h3>
 	<div class="row">
-		<div>
-			<form action="/signup" method="POST">
-			    Username:    <br><input type="text" name="username" padding-left:10em /><br>
-			    Email address:  <br><input type="text" name="email" padding-left:10em/><br>
-			    Password:     <br><input type="password" name="password" padding-left:10em /><br>
-			    Name: <br><input type="text" name="name" padding-left:10em /><br>
-			    Last Name:<br><input type="text" name="lastname" padding-left:10em /><br><br>
-			    <input class="btn btn-primary" type="submit" value="Create user" />
-			</form>
-		</div>
-	</div>
+		<div class="g-signin2" data-onsuccess="onSignIn"  data-width="200", data-height="50", data-longtitle="true" data-theme="dark"></div>
+      		<script>
+        		function onSignUp(googleUser) {
+          		
+	          		//Useful data for your client-side scripts:
+	          		var profile = googleUser.getBasicProfile();
+	          		console.debug("userId: " + profile.getId());
+	          		console.debug("Name: " + profile.getName());
+	          		console.debug("Image URL: " + profile.getImageUrl());
+	          		console.debug("Email: " + profile.getEmail());
+
+	          		// The ID token you need to pass to your backend:
+	          		var id_token = googleUser.getAuthResponse().id_token;
+					console.debug("ID Token: " + id_token);
+
+	          		var data = {};
+	          		data['id'] = profile.getId();
+	          		data['name'] = profile.getName();
+	          		data['email'] = profile.getEmail();
+	          		data['idtoken'] = id_token;
+
+	          		//construct an HTTP request
+	          		var xhr = new XMLHttpRequest();
+	          		xhr.open('POST', 'https://moonlit-shadow-813.appspot.com/CreateUser');
+	          		xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+
+	          		//send the collected id_token data as JSON
+	          		xhr.send(JSON.stringify(data));
+
+	          		xhr.onload = function() {
+	          			console.debug('Signed in as: ' + xhr.responseText);
+	          			var response = JSON.parse(xhr.responseText);
+	          			console.debug("errorcode:" + response['errorcode']);
+	          			console.debug("errormsg:" + response['errormsg']);
+
+	          			var state = this.readyState;
+	            		var responseCode = xhr.status;
+	            		console.log("request.onload called. readyState: " + state + "; status: " + responseCode);
+
+	            		if (state == this.DONE) {
+	            			if (response['errorcode'] == 1) {
+	                			alert("Failure: " + response['errormsg']);
+	            			} else {
+	            				window.location="https://moonlit-shadow-813.appspot.com/";
+	            			} 
+	            		}
+	          		};
+        		};
+
+        		function onFailure(error) {
+          			console.log(error);
+        		}
+
+        		function renderButton() {
+		          gapi.signin2.render('g-signin2', {
+		            'scope': 'https://www.googleapis.com/auth/plus.login',
+		            'width': 200,
+		            'height': 50,
+		            'longtitle': true,
+		            'theme': 'dark',
+		            'onsuccess': onSuccess,
+		            'onFailure': onFailure
+		          });
+		        }
+      		</script>
+      <div id="result"></div>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
