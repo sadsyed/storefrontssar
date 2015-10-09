@@ -52,6 +52,7 @@ from colormath.color_conversions import convert_color
 
 from oauth2client import client, crypt
 import httplib2
+from authenticate import authenticate_user
 
 APP_ID_GLOBAL = 'moonlit-shadow-813.appspot.com'
 STORAGE_ID_GLOBAL = 'moonlit-shadow-813'
@@ -1453,52 +1454,54 @@ class GetSaleCategories2(webapp2.RequestHandler):
       self.response.write(result)
 
 class GetCategories(webapp2.RequestHandler):
-    def authenticate_user(self, tokenId):
-      CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+    # def authenticate_user(self, tokenId):
+    #   #CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+    #   CLIENT_ID = "40560021354-iem950p1ti5ak8t0v2qb52vnk651atuh.apps.googleusercontent.com"
 
-      # Check that the Access Token is valid
-      url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' % tokenId)
+    #   # Check that the Access Token is valid
+    #   url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' % tokenId)
 
-      h = httplib2.Http()
-      #logging.info('Json data from googleapis : ' + str(h))
-      logging.info('Json data from googleapis: ' + str(h.request))
-      logging.info('Json data from googleapis request: ' + str(h.request(url, 'GET')))
-      result = json.loads(h.request(url, 'GET')[1].decode('utf-8'))
+    #   h = httplib2.Http()
+    #   #logging.info('Json data from googleapis : ' + str(h))
+    #   logging.info('Json data from googleapis: ' + str(h.request))
+    #   logging.info('Json data from googleapis request: ' + str(h.request(url, 'GET')))
+    #   result = json.loads(h.request(url, 'GET')[1].decode('utf-8'))
+    #   logging.info('google signin result: ' + str(result))      
 
-      token_status = {}
-      access_status = {}
-      if result.get('error') is not None:
-        # This is not a valid token.
-        access_status['valid'] = False
-        access_status['gplus_id'] = None
-        access_status['message'] = 'Invalid Access Token.'
-      elif result['issued_to'] != CLIENT_ID:
-        # This is not meant for this app. It is VERY important to check
-        # the client ID in order to prevent man-in-the-middle attacks.
-        access_status['valid'] = False
-        access_status['gplus_id'] = None
-        access_status['message'] = 'Access Token not meant for this app.'
-      else:
-        access_status['valid'] = True
-        access_status['gplus_id'] = result['user_id']
-        access_status['message'] = 'Access Token is valid.'
-      token_status['access_token_status'] = access_status
-      logging.info('TokenSigin - token_status: ' + str(token_status))
+    #   token_status = {}
+    #   access_status = {}
+    #   if result.get('error') is not None:
+    #     # This is not a valid token.
+    #     access_status['valid'] = False
+    #     access_status['gplus_id'] = None
+    #     access_status['message'] = 'Invalid Access Token.'
+    #   elif result['issued_to'] != CLIENT_ID:
+    #     # This is not meant for this app. It is VERY important to check
+    #     # the client ID in order to prevent man-in-the-middle attacks.
+    #     access_status['valid'] = False
+    #     access_status['gplus_id'] = None
+    #     access_status['message'] = 'Access Token not meant for this app.'
+    #   else:
+    #     access_status['valid'] = True
+    #     access_status['gplus_id'] = result['user_id']
+    #     access_status['message'] = 'Access Token is valid.'
+    #   token_status['access_token_status'] = access_status
+    #   logging.info('TokenSigin - token_status: ' + str(token_status))
 
-      logging.info('access_status: ' + str(access_status['valid']))
-      # if access_status[valid]
-      #   logging.info('Woohooo, token is valid')
-      #   return true;
-      # else
-      #   return false;
-      return access_status['valid']
+    #   logging.info('access_status: ' + str(access_status['valid']))
+    #   # if access_status[valid]
+    #   #   logging.info('Woohooo, token is valid')
+    #   #   return true;
+    #   # else
+    #   #   return false;
+    #   return access_status['valid']
 
     def post(self):
       data = json.loads(self.request.body)
       logging.info('Json data sent to GetCategories: ' + str(data))
 
       tokenId = data['tokenId']
-      isValidUser = self.authenticate_user(tokenId)
+      isValidUser = authenticate_user(tokenId)
       logging.info('isValidUser: ' + str(isValidUser))
 
       emailfilter = None
@@ -2181,7 +2184,9 @@ class UpdateArticleImageColors(webapp2.RequestHandler):
 
 class TokenAuthentication():
   def authenticate_user(self, tokenId):
-    CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+    logging.info('TokenAuthentication')
+    #CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+    CLIENT_ID = "40560021354-iem950p1ti5ak8t0v2qb52vnk651atuh.apps.googleusercontent.com"
 
     # Check that the Access Token is valid
     url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' % tokenId)
@@ -2191,6 +2196,7 @@ class TokenAuthentication():
     logging.info('Json data from googleapis: ' + str(h.request))
     logging.info('Json data from googleapis request: ' + str(h.request(url, 'GET')))
     result = json.loads(h.request(url, 'GET')[1].decode('utf-8'))
+    logging.info('google singin: ' + str(result))
 
     token_status = {}
     access_status = {}
@@ -2200,6 +2206,8 @@ class TokenAuthentication():
       access_status['gplus_id'] = None
       access_status['message'] = 'Invalid Access Token.'
     elif result['issued_to'] != CLIENT_ID:
+      logging.info('issued_to: ' + str(result['issued_to']))
+      logging.info('CLIENT_ID: ' + str(CLIENT_ID))
       # This is not meant for this app. It is VERY important to check
       # the client ID in order to prevent man-in-the-middle attacks.
       access_status['valid'] = False
@@ -2222,12 +2230,14 @@ class TokenAuthentication():
 
 class TokenSignin(webapp2.RequestHandler):
   def post(self):
+    logging.info('TokenSignin')
     data = json.loads(self.request.body)
     logging.info('Json data sent to TokenSignin Service: ' + str(data))
 
     tokenId = data['tokenId']
 
-    CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+    #CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+    CLIENT_ID = "40560021354-iem950p1ti5ak8t0v2qb52vnk651atuh.apps.googleusercontent.com"
 
     # Check that the Access Token is valid
     url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' % tokenId)
