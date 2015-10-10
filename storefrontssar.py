@@ -1080,247 +1080,260 @@ class UpdateArticle(webapp2.RequestHandler):
     result = None
     fieldsupdated = None
     logging.info(str(self.request))
-    try:
+    try: 
       data = {}
-      try:
-        data = json.loads(self.request.body)
-        if data['append'] == 'false':
-          try:
-            tagtemp = data['articleTags']
-            if type(tagtemp) == list:
-              logging.info('tags already a list, do nothing')
-            else:
-              data['articleTags'] = [data['articleTags']]
-              logging.info('make tags a list: ' + str(data['articleTags']))
-          except:
-            pass
-          try:
-            colorstemp = data['articleColors']
-            if type(colorstemp) == list:
-              logging.info('colors already a list, do nothing')
-            else:
-              data['articleColors'] = [data['articleColors']]
-              logging.info('make colors a list: ' + str(data['articleColors']))
-          except:
-            pass
-          try:
-            usedlisttemp = data['articleLastUsed']
-            if type(usedlisttemp) == list:
-              logging.info('used list already a list, do nothing')
-            else:
-              data['articleLastUsed'] = [data['articleLastUsed']]
-              logging.info('article last used a string, making it a list')
-          except:
-            pass
-        else:
-          try:
-            tagtemp = data['articleTags']
-            if type(tagtemp) == list:
-              data['articleTags'] = data['articleTags'][0]
-            else:
-              pass
-          except:
-            pass
-          try:
-            usedlisttemp = data['articleLastUsed']
-            if type(usedlisttemp) == list:
-              data['articleLastUsed'] = data['articleLastUsed'][0]
-            else:
-              pass
-          except:
-            pass
-        try:       
-          temp = data['articlePrivate']
-          data['articlePrivate'] = temp.lower()
-        except:
-          pass
-        logging.info('Got json data')
-      except:
-        logging.info('trying to get request data')
+      data = json.loads(self.request.body)
+      logging.info('Json data sent to UpdateArticle function: ' + str(data))
 
-        data['articleId'] = self.request.get('articleId')
-        data['articleOwner'] = self.request.get('articleOwner')
-        temp = self.request.get('articlePrivate')
-        data['articlePrivate'] = temp.lower()
-        data['articleType'] = self.request.get('articleType')
-        data['append'] = self.request.get('append')
-        if not data['append'] == "":
+      # authenticate user tokenid
+      tokenId = data['tokenId']
+      isValidUser = authenticate_user(tokenId)
+      logging.info('isValidUser: ' + str(isValidUser))
+
+      if isValidUser: # authentication successful; execute service
+        try:
           if data['append'] == 'false':
-            logging.info('append is false')
-            lastusedtemp = self.request.get('articleLastUsed')
-            logging.info('last used temp is: ' + str(lastusedtemp))
-            if type(lastusedtemp) == list:
-              logging.info('last used temp is list')
-              data['articleLastUsed'] = lastusedtemp
-            else:
-              if not lastusedtemp == "":
-                logging.info('making last used temp a list')
-                data['articleLastUsed'] = [lastusedtemp]
+            try:
+              tagtemp = data['articleTags']
+              if type(tagtemp) == list:
+                logging.info('tags already a list, do nothing')
               else:
-                logging.info('Didnt get any last used dates')
-            tagtemp = self.request.get('articleTags')
-            if type(tagtemp) == list:
-              logging.info('tag temp is a list')
-              data['articleTags'] = tagtemp
-            else:
-              if not tagtemp == "":
-                logging.info('tag temp is a string, and not empty making a list')
-                data['articleTags'] = [tagtemp]
-                logging.info('tag temp is nowC' + str(data['articleTags']))
+                data['articleTags'] = [data['articleTags']]
+                logging.info('make tags a list: ' + str(data['articleTags']))
+            except:
+              pass
+            try:
+              colorstemp = data['articleColors']
+              if type(colorstemp) == list:
+                logging.info('colors already a list, do nothing')
               else:
-                logging.info('Didnt get any tags')
-            colorstemp = self.request.get('articleColors')
-            if type(colorstemp) == list:
-              logging.info('colors temp is a list')
-              data['articleColors'] = colorstemp
-            else:
-              if not colorstemp == "":
-                logging.info('colors temp is a string, and not empty making a list')
-                data['articleColors'] = [colorstemp]
-                logging.info('colors temp is now' + str(data['articleColors']))
+                data['articleColors'] = [data['articleColors']]
+                logging.info('make colors a list: ' + str(data['articleColors']))
+            except:
+              pass
+            try:
+              usedlisttemp = data['articleLastUsed']
+              if type(usedlisttemp) == list:
+                logging.info('used list already a list, do nothing')
               else:
-                logging.info('Didnt get any colors')
+                data['articleLastUsed'] = [data['articleLastUsed']]
+                logging.info('article last used a string, making it a list')
+            except:
+              pass
           else:
-            data['articleLastUsed'] = self.request.get('articleLastUsed')
-            data['articleTags'] = self.request.get('articleTags')
-            data['articleColors'] = self.request.get('articleColors')
-        data['articlePrice'] = self.request.get('articlePrice')
-        data['articleDescription'] = self.request.get('articleDescription')
-        data['articleOkToSell'] = self.request.get('articleOkToSell')
-        data['articleDelete'] = self.request.get('articleDelete')
-      logging.info('Json data sent to this function: ' + str(data))
-      present_query = myArticle.query(myArticle.articleid == data['articleId'])
-      logging.info('Created query')
-      fieldsupdated = list()
-      try:
-        existsarticle = present_query.get()
-        logging.info('Query returned: ' + str(existsarticle))
-        try:
-          if data['articlePrivate'] == 'true':
-            existsarticle.articleprivate = True
-            logging.info('updated article private to True')
-            fieldsupdated.append('articlePrivate')
-          elif data['articlePrivate'] == 'false':
-            existsarticle.articleprivate = False
-            logging.info('updated article private to False')
-            fieldsupdated.append('articlePrivate')
-          else:
-            logging.info('No updates made to article private')
+            try:
+              tagtemp = data['articleTags']
+              if type(tagtemp) == list:
+                data['articleTags'] = data['articleTags'][0]
+              else:
+                pass
+            except:
+              pass
+            try:
+              usedlisttemp = data['articleLastUsed']
+              if type(usedlisttemp) == list:
+                data['articleLastUsed'] = data['articleLastUsed'][0]
+              else:
+                pass
+            except:
+              pass
+          try:       
+            temp = data['articlePrivate']
+            data['articlePrivate'] = temp.lower()
+          except:
+            pass
+          logging.info('Got json data')
         except:
-          logging.info('no new value for article private')
-        try:
-          if not data['articleOwner'] == "":
-            existsarticle.articleowner = data['articleOwner']
-            logging.info('articleOwner Updated: ' + str(data['articleOwner']))
-            fieldsupdated.append('articleOwner')
-        except:
-          logging.info('No new value for article Owner')
-        try:
-          if not data['articleType'] == "":
-            existsarticle.articletype = data['articleType'] 
-            fieldsupdated.append('articleType')
-            logging.info('articletype updated')
-        except:
-          logging.info('No new article Type')
-        try:
+          logging.info('trying to get request data')
+
+          data['articleId'] = self.request.get('articleId')
+          data['articleOwner'] = self.request.get('articleOwner')
+          temp = self.request.get('articlePrivate')
+          data['articlePrivate'] = temp.lower()
+          data['articleType'] = self.request.get('articleType')
+          data['append'] = self.request.get('append')
           if not data['append'] == "":
             if data['append'] == 'false':
-              logging.info("Replacing whole last used list.")
-              try:
-                if not data['articleLastUsed'] == "":
-                  existsarticle.articlelastused = data['articleLastUsed']
-                  existsarticle.articletimesused = len(data['articleLastUsed'])
-                  fieldsupdated.append('articleLastUsed')
-                  logging.info('successfully update full list of article last used')
-              except:
-                logging.info('no article last used set')
-              try:
-                  logging.info("Replacing whole taglist.")
-                  existsarticle.articletags = data['articleTags']
-                  fieldsupdated.append('articleTags')
-              except:
-                logging.info('no article tags set')
-              try:
-                  logging.info("Replacing whole colorslist.")
-                  existsarticle.articlecolors = data['articleColors']
-                  fieldsupdated.append('articleColors')
-              except:
-                logging.info('no article colors set')
+              logging.info('append is false')
+              lastusedtemp = self.request.get('articleLastUsed')
+              logging.info('last used temp is: ' + str(lastusedtemp))
+              if type(lastusedtemp) == list:
+                logging.info('last used temp is list')
+                data['articleLastUsed'] = lastusedtemp
+              else:
+                if not lastusedtemp == "":
+                  logging.info('making last used temp a list')
+                  data['articleLastUsed'] = [lastusedtemp]
+                else:
+                  logging.info('Didnt get any last used dates')
+              tagtemp = self.request.get('articleTags')
+              if type(tagtemp) == list:
+                logging.info('tag temp is a list')
+                data['articleTags'] = tagtemp
+              else:
+                if not tagtemp == "":
+                  logging.info('tag temp is a string, and not empty making a list')
+                  data['articleTags'] = [tagtemp]
+                  logging.info('tag temp is nowC' + str(data['articleTags']))
+                else:
+                  logging.info('Didnt get any tags')
+              colorstemp = self.request.get('articleColors')
+              if type(colorstemp) == list:
+                logging.info('colors temp is a list')
+                data['articleColors'] = colorstemp
+              else:
+                if not colorstemp == "":
+                  logging.info('colors temp is a string, and not empty making a list')
+                  data['articleColors'] = [colorstemp]
+                  logging.info('colors temp is now' + str(data['articleColors']))
+                else:
+                  logging.info('Didnt get any colors')
             else:
-              try:
-                if not data['articleLastUsed'] == "":
-                  logging.info('Appending item to last used list: ' + str(data['articleLastUsed']))
-                  templist = existsarticle.articlelastused
-                  logging.info('current list is: ' + str(templist))
-                  templist.append(data['articleLastUsed'])
-                  existsarticle.articletimesused = len(templist)
-                  existsarticle.articlelastused = templist
-                  fieldsupdated.append('articleLastUsed')
-              except:
-                logging.info('no value for article last used set')
-              try:
-                if not data['articleTags'] == "":
-                  logging.info('Appending item to tag list')
-                  templist = existsarticle.articletags
-                  templist.append(data['articleTags'])
-                  existsarticle.articletags = templist
-                  fieldsupdated.append('articleTags')
-              except:
-                logging.info('no value for article tags set')
-              try:
-                if not data['articleColors'] == "":
-                  logging.info('Appending item to colors list')
-                  templist = existsarticle.articlecolors
-                  templist.append(data['articleColors'])
-                  existsarticle.articlecolors = templist
-                  fieldsupdated.append('articleColors')
-              except:
-                logging.info('no value for article tags set')
-          else:
-            waserror = true # did not specify append or replace
-        except:
-          logging.info('missing append, article tags, or article last used')
-        val = 0.0
+              data['articleLastUsed'] = self.request.get('articleLastUsed')
+              data['articleTags'] = self.request.get('articleTags')
+              data['articleColors'] = self.request.get('articleColors')
+          data['articlePrice'] = self.request.get('articlePrice')
+          data['articleDescription'] = self.request.get('articleDescription')
+          data['articleOkToSell'] = self.request.get('articleOkToSell')
+          data['articleDelete'] = self.request.get('articleDelete')
+        logging.info('Json data sent to UpdateArticle function: ' + str(data))
+        present_query = myArticle.query(myArticle.articleid == data['articleId'])
+        logging.info('Created query')
+        fieldsupdated = list()
         try:
-          if not data['articlePrice'] == "":
-            logging.info("Trying to update: " + str(data['articlePrice']))
-            try:
-              val = int(data['articlePrice'])
-              logging.info("Got past int val.")
-            except ValueError:
-              val = float(data['articlePrice'])
-              logging.info('got past float val.')
-            existsarticle.articleprice = val
-            fieldsupdated.append('articlePrice')
-        except:
-          logging.info('no value set for article price')
-        try:
-          if not data['articleDescription'] == "":
-            existsarticle.articledescription = data['articleDescription']
-            fieldsupdated.append('articleDescription')
-            logging.info("updated article description")
-        except:
-          logging.info('no value set for article description')
-        try:
-          if not data['articleOkToSell'] == "":
-            if data['articleOkToSell'] == 'true':
-              existsarticle.articleoktosell = True
-              logging.info("updating ok to sell to true")
+          existsarticle = present_query.get()
+          logging.info('Query returned: ' + str(existsarticle))
+          try:
+            if data['articlePrivate'] == 'true':
+              existsarticle.articleprivate = True
+              logging.info('updated article private to True')
+              fieldsupdated.append('articlePrivate')
+            elif data['articlePrivate'] == 'false':
+              existsarticle.articleprivate = False
+              logging.info('updated article private to False')
+              fieldsupdated.append('articlePrivate')
             else:
-              existsarticle.articleoktosell = False
-              logging.info("updating ok to sell to false")
-            fieldsupdated.append('articleOkToSell')
+              logging.info('No updates made to article private')
+          except:
+            logging.info('no new value for article private')
+          try:
+            if not data['articleOwner'] == "":
+              existsarticle.articleowner = data['articleOwner']
+              logging.info('articleOwner Updated: ' + str(data['articleOwner']))
+              fieldsupdated.append('articleOwner')
+          except:
+            logging.info('No new value for article Owner')
+          try:
+            if not data['articleType'] == "":
+              existsarticle.articletype = data['articleType'] 
+              fieldsupdated.append('articleType')
+              logging.info('articletype updated')
+          except:
+            logging.info('No new article Type')
+          try:
+            if not data['append'] == "":
+              if data['append'] == 'false':
+                logging.info("Replacing whole last used list.")
+                try:
+                  if not data['articleLastUsed'] == "":
+                    existsarticle.articlelastused = data['articleLastUsed']
+                    existsarticle.articletimesused = len(data['articleLastUsed'])
+                    fieldsupdated.append('articleLastUsed')
+                    logging.info('successfully update full list of article last used')
+                except:
+                  logging.info('no article last used set')
+                try:
+                    logging.info("Replacing whole taglist.")
+                    existsarticle.articletags = data['articleTags']
+                    fieldsupdated.append('articleTags')
+                except:
+                  logging.info('no article tags set')
+                try:
+                    logging.info("Replacing whole colorslist.")
+                    existsarticle.articlecolors = data['articleColors']
+                    fieldsupdated.append('articleColors')
+                except:
+                  logging.info('no article colors set')
+              else:
+                try:
+                  if not data['articleLastUsed'] == "":
+                    logging.info('Appending item to last used list: ' + str(data['articleLastUsed']))
+                    templist = existsarticle.articlelastused
+                    logging.info('current list is: ' + str(templist))
+                    templist.append(data['articleLastUsed'])
+                    existsarticle.articletimesused = len(templist)
+                    existsarticle.articlelastused = templist
+                    fieldsupdated.append('articleLastUsed')
+                except:
+                  logging.info('no value for article last used set')
+                try:
+                  if not data['articleTags'] == "":
+                    logging.info('Appending item to tag list')
+                    templist = existsarticle.articletags
+                    templist.append(data['articleTags'])
+                    existsarticle.articletags = templist
+                    fieldsupdated.append('articleTags')
+                except:
+                  logging.info('no value for article tags set')
+                try:
+                  if not data['articleColors'] == "":
+                    logging.info('Appending item to colors list')
+                    templist = existsarticle.articlecolors
+                    templist.append(data['articleColors'])
+                    existsarticle.articlecolors = templist
+                    fieldsupdated.append('articleColors')
+                except:
+                  logging.info('no value for article tags set')
+            else:
+              waserror = true # did not specify append or replace
+          except:
+            logging.info('missing append, article tags, or article last used')
+          val = 0.0
+          try:
+            if not data['articlePrice'] == "":
+              logging.info("Trying to update: " + str(data['articlePrice']))
+              try:
+                val = int(data['articlePrice'])
+                logging.info("Got past int val.")
+              except ValueError:
+                val = float(data['articlePrice'])
+                logging.info('got past float val.')
+              existsarticle.articleprice = val
+              fieldsupdated.append('articlePrice')
+          except:
+            logging.info('no value set for article price')
+          try:
+            if not data['articleDescription'] == "":
+              existsarticle.articledescription = data['articleDescription']
+              fieldsupdated.append('articleDescription')
+              logging.info("updated article description")
+          except:
+            logging.info('no value set for article description')
+          try:
+            if not data['articleOkToSell'] == "":
+              if data['articleOkToSell'] == 'true':
+                existsarticle.articleoktosell = True
+                logging.info("updating ok to sell to true")
+              else:
+                existsarticle.articleoktosell = False
+                logging.info("updating ok to sell to false")
+              fieldsupdated.append('articleOkToSell')
+          except:
+            logging.info('no value set for ok to sell')
+          logging.info("Seemed to get value, trying to write")
+          existsarticle.put()
         except:
-          logging.info('no value set for ok to sell')
-        logging.info("Seemed to get value, trying to write")
-        existsarticle.put()
-      except:
-        pass
-      result = {'errorcode':0, 'fieldsUpdated':fieldsupdated}  
+          pass
+        result = {'errorcode':0, 'fieldsUpdated':fieldsupdated}  
+      else: # authentication failed
+        logging.info('user authentication failed');
+        result = json.dumps({'errorcode': -2}) # Error code -2: token authentication failed   
     except:
       waserror = true
+    
     if waserror:
       result['errorcode'] = 7
+    
     result = json.dumps(result)
     logging.info('Fields updated: ' + str(fieldsupdated))
     logging.info('Result writing: ' + str(result))
@@ -1505,12 +1518,12 @@ class GetCategory(webapp2.RequestHandler):
     data = json.loads(self.request.body)
     logging.info('Json data sent to GetCategory service: ' + str(data))
 
-    # authenticate user tokenif
+    # authenticate user tokenid
     tokenId = data['tokenId']
     isValidUser = authenticate_user(tokenId)
     logging.info('isValidUser: ' + str(isValidUser))
 
-    if isValidUser:
+    if isValidUser: # token authentication successful; execute service
       try:
         emailfilter = None
         try:
