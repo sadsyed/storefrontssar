@@ -1454,48 +1454,6 @@ class GetSaleCategories2(webapp2.RequestHandler):
       self.response.write(result)
 
 class GetCategories(webapp2.RequestHandler):
-    # def authenticate_user(self, tokenId):
-    #   #CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
-    #   CLIENT_ID = "40560021354-iem950p1ti5ak8t0v2qb52vnk651atuh.apps.googleusercontent.com"
-
-    #   # Check that the Access Token is valid
-    #   url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' % tokenId)
-
-    #   h = httplib2.Http()
-    #   #logging.info('Json data from googleapis : ' + str(h))
-    #   logging.info('Json data from googleapis: ' + str(h.request))
-    #   logging.info('Json data from googleapis request: ' + str(h.request(url, 'GET')))
-    #   result = json.loads(h.request(url, 'GET')[1].decode('utf-8'))
-    #   logging.info('google signin result: ' + str(result))      
-
-    #   token_status = {}
-    #   access_status = {}
-    #   if result.get('error') is not None:
-    #     # This is not a valid token.
-    #     access_status['valid'] = False
-    #     access_status['gplus_id'] = None
-    #     access_status['message'] = 'Invalid Access Token.'
-    #   elif result['issued_to'] != CLIENT_ID:
-    #     # This is not meant for this app. It is VERY important to check
-    #     # the client ID in order to prevent man-in-the-middle attacks.
-    #     access_status['valid'] = False
-    #     access_status['gplus_id'] = None
-    #     access_status['message'] = 'Access Token not meant for this app.'
-    #   else:
-    #     access_status['valid'] = True
-    #     access_status['gplus_id'] = result['user_id']
-    #     access_status['message'] = 'Access Token is valid.'
-    #   token_status['access_token_status'] = access_status
-    #   logging.info('TokenSigin - token_status: ' + str(token_status))
-
-    #   logging.info('access_status: ' + str(access_status['valid']))
-    #   # if access_status[valid]
-    #   #   logging.info('Woohooo, token is valid')
-    #   #   return true;
-    #   # else
-    #   #   return false;
-    #   return access_status['valid']
-
     def post(self):
       data = json.loads(self.request.body)
       logging.info('Json data sent to GetCategories: ' + str(data))
@@ -1544,45 +1502,62 @@ class GetCategories(webapp2.RequestHandler):
 
 class GetCategory(webapp2.RequestHandler):
   def post(self):
-    try:
-      emailfilter = None
+    data = json.loads(self.request.body)
+    logging.info('Json data sent to GetCategory service: ' + str(data))
+
+    # authenticate user tokenif
+    tokenId = data['tokenId']
+    isValidUser = authenticate_user(tokenId)
+    logging.info('isValidUser: ' + str(isValidUser))
+
+    if isValidUser:
       try:
-        data = json.loads(self.request.body)
-        emailfilter = data['emailFilter']
-      except:
-        logging.info("No json data for email filter.")
-      present_query = myArticle.query(myArticle.articletype == data['category'])
-      try:
-        returnlist = list()
-        existsarticles = present_query.fetch()
-        returnarticle = {}
-        for existsarticle in existsarticles:
-          if not emailfilter == None:
-            if type(emailfilter) is list:
-              for thisowner in emailfilter:
-                if existsarticle.articleowner == thisowner:
-                  logging.info('article private: ' + str(existsarticle.articleprivate))
-                  returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate, 'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
-            else:
-              if existsarticle.articleowner == emailfilter:
-                logging.info('found match')
-                returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
-          else:
-            logging.info('article private: ' + str(existsarticle.articleprivate))
-            returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articlePrivate':existsarticle.articleprivate,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
-          if not returnarticle == {}:
-            try:
-              returnlist.index(returnarticle)
+        emailfilter = None
+        try:
+          data = json.loads(self.request.body)
+          emailfilter = data['emailFilter']
+        except:
+          logging.info("No json data for email filter.")
+        present_query = myArticle.query(myArticle.articletype == data['category'])
+        try:
+          returnlist = list()
+          existsarticles = present_query.fetch()
+          returnarticle = {}
+          for existsarticle in existsarticles:
+            # if email is provided
+            if not emailfilter == None:
+              logging.info('email provided: ' + str(emailfilter))
+              if type(emailfilter) is list:
+                # check if each email in the provided list 
+                for thisowner in emailfilter:
+                  if existsarticle.articleowner == thisowner:
+                    logging.info('list block: article private: ' + str(existsarticle.articleprivate))
+                    returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate, 'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
+              # if there's only one email
+              else:
+                if existsarticle.articleowner == emailfilter:
+                  logging.info('found match')
+                  returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
+            else: # if email is not provided
+              logging.info('email is not provided')
               logging.info('article private: ' + str(existsarticle.articleprivate))
-              logging.info("no exception item already in list")
-            except:
-              logging.info("item not in list, appending")
-              returnlist.append(returnarticle)
-        result = json.dumps({'category':returnlist})
+              returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articlePrivate':existsarticle.articleprivate,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
+            if not returnarticle == {}:
+              try:
+                returnlist.index(returnarticle)
+                logging.info('article private: ' + str(existsarticle.articleprivate))
+                logging.info("no exception item already in list")
+              except:
+                logging.info("item not in list, appending")
+                returnlist.append(returnarticle)
+          result = json.dumps({'category':returnlist})
+        except:
+          result = json.dumps({'errorcode': 10}) # Error code 10: No article matched filter.
       except:
-        result = json.dumps({'errorcode': 10}) # Error code 10: No article matched filter.
-    except:
-      result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+        result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+    else: # authenrication failed
+      logging.info('user authenrication failed');
+      result = json.dumps({'errorcode': -2}) # Error code -2: token authentication failed
     self.response.write(result)
 
 class SendEmail(BaseHandler):
