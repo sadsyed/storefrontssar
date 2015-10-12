@@ -477,55 +477,65 @@ class CreateArticle(webapp2.RequestHandler):
   def post(self):
     try:
       data = json.loads(self.request.body)
-      logging.info('Json data sent to this function: ' + str(data))
+      logging.info('Json data sent to CreateArticle function: ' + str(data))
       logging.info("Article Name: " + str(data['articleName']))
       present_query = myArticle.query(myArticle.articlename == data['articleName'])
       logging.info('Created query')
       articlereturnid = str(uuid.uuid1())
-      try:
-        existsarticle = present_query.get()
-        logging.info('Query returned: ' + str(existsarticle))
-        if(existsarticle == None):
-          thisArticle = myArticle(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
-          logging.info('Got key')
-          thisArticle.articlename = data['articleName']
-          logging.info('After article name')
-          thisArticle.articledescription = data['articleDescription']
-          thisArticle.articleid = articlereturnid
-          thisArticle.articlelastused = list()
-          thisArticle.articletimesused = 0
-          thisArticle.articleowner = data['articleOwner']
-          thisArticle.articletype = data['articleType']
-          logging.info('After article type')
-          #TODO: Create a list processor for tags
-          tags = list()
-          tags.append(data['articleTags'])
-          logging.info('pulled tag list')
-          thisArticle.articletags = tags
-          logging.info('done with taglist')
-          #TODO: Process price
-          val = 0.0
-          try:
-            val = int(data['articlePrice'])
-          except ValueError:
-            val = float(data['articlePrice'])
-          thisArticle.articleprice = val
-          logging.info("Got article price")
-          oktosell = False
-          if data['articleOkToSell'] == 'true':
-            oktosell = True
-          thisArticle.articleoktosell = oktosell
-          aprivate = False
-          if data['articlePrivate'] == 'true':
-            aprivate = True
-          thisArticle.articleprivate = aprivate
-          logging.info('This article: ' + str(thisArticle))
-          thisArticle.put()
-          result = json.dumps({'returnval':articlereturnid}) # Error code 0: Success
-        else:
-          result = json.dumps({'returnval':5}) # Error code 5: Article already exists
-      except:
-        result = json.dumps({'returnval':2}) # Error code 2: error writing to datastore
+
+      # authenticate user tokenid
+      tokenId = data['tokenId']
+      isValidUser = authenticate_user(tokenId)
+      logging.info('isValidUser: ' + str(isValidUser))
+    
+      if isValidUser:
+        try:
+          existsarticle = present_query.get()
+          logging.info('Query returned: ' + str(existsarticle))
+          if(existsarticle == None):
+            thisArticle = myArticle(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+            logging.info('Got key')
+            thisArticle.articlename = data['articleName']
+            logging.info('After article name')
+            thisArticle.articledescription = data['articleDescription']
+            thisArticle.articleid = articlereturnid
+            thisArticle.articlelastused = list()
+            thisArticle.articletimesused = 0
+            thisArticle.articleowner = data['articleOwner']
+            thisArticle.articletype = data['articleType']
+            logging.info('After article type')
+            #TODO: Create a list processor for tags
+            tags = list()
+            tags.append(data['articleTags'])
+            logging.info('pulled tag list')
+            thisArticle.articletags = tags
+            logging.info('done with taglist')
+            #TODO: Process price
+            val = 0.0
+            try:
+              val = int(data['articlePrice'])
+            except ValueError:
+              val = float(data['articlePrice'])
+            thisArticle.articleprice = val
+            logging.info("Got article price")
+            oktosell = False
+            if data['articleOkToSell'] == 'true':
+              oktosell = True
+            thisArticle.articleoktosell = oktosell
+            aprivate = False
+            if data['articlePrivate'] == 'true':
+              aprivate = True
+            thisArticle.articleprivate = aprivate
+            logging.info('This article: ' + str(thisArticle))
+            thisArticle.put()
+            result = json.dumps({'returnval':articlereturnid}) # Error code 0: Success
+          else:
+            result = json.dumps({'returnval':5}) # Error code 5: Article already exists
+        except:
+          result = json.dumps({'returnval':2}) # Error code 2: error writing to datastore
+      else: #authentication failed
+        logging.info('user authentication failed');
+        result = json.dumps({'errorcode': -2}) # Error code -2: token authentication failed
     except:
       result = json.dumps({'returnval':1}) # No corred json data
     self.response.write(result)
