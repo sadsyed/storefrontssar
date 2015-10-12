@@ -772,83 +772,93 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
           'Access-Control-Allow-Headers'
       ] = 'Content-Type, Content-Range, Content-Disposition'
 
-
   def handle_android_upload(self):
     #try:
+    tokenId = self.request.headers['tokenId']
     articleid = self.request.headers['articleid']
     logging.info('Article ID is: ' + str(articleid))
-    logging.info('Check if article exists')
-    present_query = myArticle.query(myArticle.articleid  == articleid)
-    existsarticle = present_query.get()
-    comments = ""
-    if not existsarticle == None:
-      imageid = str(uuid.uuid1())
-      bucket_name = os.environ.get('BUCKET_NAME', app_identity.get_default_gcs_bucket_name())
-      logging.info("My bucket name is: " + str(bucket_name))
-      bucket = '/' + bucket_name
-      filename = bucket + '/' + articleid + '/' + imageid
-      try:
-        myimagefile = self.request.get('imageFile')
-      except:
-        logging.info("Imagefile not retrieved from self.request")
-      result = {}
-      creationdate = str(datetime.datetime.now().date())
-      logging.info("starting to write file to store")
-    # Create a GCS file with GCS client.
-      with gcs.open(filename, 'w') as f:
-        f.write(myimagefile)
-    # Blobstore API requires extra /gs to distinguish against blobstore files.
-      blobstore_filename = '/gs' + filename
-      blob_key = blobstore.create_gs_key(blobstore_filename)
-      logging.info("Trying to get url for blob key: " + str(blob_key))
 
-    # extract the colors from the image
-      # get image 
-      #blob_reader = blobstore.BlobReader(blob_key)
-      #img = Image.open(blob_reader)
-      #w, h = img.size
-      
-      #hexcolors = self.remove_background(blob_key)
-      #hexcolors = self.remove_background_pil(blob_key)
-      #logging.info("removed background, now hexcolors are : " + str(hexcolors))
+    # authenticate user tokenid
+    isValidUser = authenticate_user(tokenId)
+    logging.info('isValidUser: ' + str(isValidUser))
 
-      # find hex colors
-      #hexcolors = self.colorz(blob_key)
-      #logging.info("hexcolors are : " + str(hexcolors))
+    if isValidUser: #authentication successful; execute service
+      logging.info('Check if article exists')
+      present_query = myArticle.query(myArticle.articleid  == articleid)
+      existsarticle = present_query.get()
+      comments = ""
 
-      # get color names
-      colors = list()
-      colors.append("white")
-      
-      #for color in hexcolors:
-      #  colorname = self.get_color_name(color)
-      #  logging.info("colorname: " + str(colorname))
-      #  colors.append(colorname)
-      #logging.info("colors are : " + str(colors))
+      if not existsarticle == None:
+        imageid = str(uuid.uuid1())
+        bucket_name = os.environ.get('BUCKET_NAME', app_identity.get_default_gcs_bucket_name())
+        logging.info("My bucket name is: " + str(bucket_name))
+        bucket = '/' + bucket_name
+        filename = bucket + '/' + articleid + '/' + imageid
+        try:
+          myimagefile = self.request.get('imageFile')
+        except:
+          logging.info("Imagefile not retrieved from self.request")
+        result = {}
+        creationdate = str(datetime.datetime.now().date())
+        logging.info("starting to write file to store")
+      # Create a GCS file with GCS client.
+        with gcs.open(filename, 'w') as f:
+          f.write(myimagefile)
+      # Blobstore API requires extra /gs to distinguish against blobstore files.
+        blobstore_filename = '/gs' + filename
+        blob_key = blobstore.create_gs_key(blobstore_filename)
+        logging.info("Trying to get url for blob key: " + str(blob_key))
 
-      try:
-        result['url'] = images.get_serving_url(
-            blob_key,
-        )
-      except:
-        logging.info("Could not get serving url")
-        result['url'] = ""
-      logging.info("Result url: " + str(result['url']))
+      # extract the colors from the image
+        # get image 
+        #blob_reader = blobstore.BlobReader(blob_key)
+        #img = Image.open(blob_reader)
+        #w, h = img.size
+        
+        #hexcolors = self.remove_background(blob_key)
+        #hexcolors = self.remove_background_pil(blob_key)
+        #logging.info("removed background, now hexcolors are : " + str(hexcolors))
 
-      myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
-      myimage.imageid = imageid
-      myimage.imagefileurl = result['url']
-      myimage.imagecreationdate = creationdate
-      myimage.imagearticleid = articleid
-      #myimage.colors = colors
-      myimage.put()
-      existsarticle.articleimageurl = myimage.imagefileurl
-      existsarticle.articlecolors = colors
-      existsarticle.put()
+        # find hex colors
+        #hexcolors = self.colorz(blob_key)
+        #logging.info("hexcolors are : " + str(hexcolors))
 
-    #except:
-      #logging.info("exception uploading files")
+        # get color names
+        colors = list()
+        colors.append("white")
+        
+        #for color in hexcolors:
+        #  colorname = self.get_color_name(color)
+        #  logging.info("colorname: " + str(colorname))
+        #  colors.append(colorname)
+        #logging.info("colors are : " + str(colors))
 
+        try:
+          result['url'] = images.get_serving_url(
+              blob_key,
+          )
+        except:
+          logging.info("Could not get serving url")
+          result['url'] = ""
+        logging.info("Result url: " + str(result['url']))
+
+        myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+        myimage.imageid = imageid
+        myimage.imagefileurl = result['url']
+        myimage.imagecreationdate = creationdate
+        myimage.imagearticleid = articleid
+        #myimage.colors = colors
+        myimage.put()
+        existsarticle.articleimageurl = myimage.imagefileurl
+        existsarticle.articlecolors = colors
+        existsarticle.put()
+
+      #except:
+        #logging.info("exception uploading files")
+    else: # authenrication failed
+      logging.info('user authentication failed');
+      result = json.dumps({'errorcode': -2}) # Error code -2: token  
+    
     return result
 
   def options(self):
