@@ -847,7 +847,7 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
         myimage.imagefileurl = result['url']
         myimage.imagecreationdate = creationdate
         myimage.imagearticleid = articleid
-        #myimage.colors = colors
+        myimage.colors = colors
         myimage.put()
         existsarticle.articleimageurl = myimage.imagefileurl
         existsarticle.articlecolors = colors
@@ -988,6 +988,7 @@ class AndroidReadArticle(webapp2.RequestHandler):
       data = json.loads(self.request.body)
       logging.info('json data sent to ReadArticle Service: ' + str(data)) 
       articleId = data['articleId']
+      email = data['email']
       
       # authenticate user tokenid
       tokenId = data['tokenId']
@@ -999,9 +1000,14 @@ class AndroidReadArticle(webapp2.RequestHandler):
         logging.info('Created query')
         try:
           existsarticle = present_query.get()
-          returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articlePrivate':existsarticle.articleprivate,'articleColors':existsarticle.articlecolors}
-          logging.info('Query returned: ' + str(existsarticle))
-          result = json.dumps(returnarticle)
+
+          # return if article is owned by the requested user
+          if existsarticle.articleowner in email:
+            returnarticle = {'errorcode':0, 'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articlePrivate':existsarticle.articleprivate,'articleColors':existsarticle.articlecolors}
+            logging.info('Query returned: ' + str(existsarticle))
+            result = json.dumps(returnarticle)
+          else:
+            result = json.dumps({'errorcode':1,'errormsg':"no article found"})
         except:
           pass
       else: # authentication failed
@@ -2093,61 +2099,72 @@ class FindMatch(webapp2.RequestHandler):
     data = json.loads(self.request.body)
     logging.info('Json data sent to this function: ' + str(data))
 
+    tokenId = data['tokenId']
+    email = data['email']
     origarticle = data['articleId']
     category = data['category']
-    #TODO: add email filter
 
-    matchedarticles = list();
-    present_query = myArticle.query(myArticle.articletype == data['category'])
-    categoryarticles = present_query.fetch()
-    logging.info("category articles: " + str(categoryarticles))
+    isValidUser = authenticate_user(tokenId)
+    logging.info('isValidUser: ' + str(isValidUser))
 
-    # get the colors of the original item
-    ori_image_query = articleImage.query(articleImage.imagearticleid == data['articleId'])
-    oriimage = ori_image_query.get()
-    if (not oriimage == None):
-      logging.info("original image is : " + str(oriimage))
-      originalcolors = oriimage.colors
-      logging.info("original image colors are : " + str(originalcolors))
-      #get original image's nearest colors name
-      #originalcolorsnames = list()
-      #for hexcolor in originalcolors:
-       # colorname = self.get_color_name(hexcolor)
-       # logging.info("colorname: " + str(colorname))
-       # originalcolorsnames.append(colorname)
-     # logging.info("original image colors name are : " + str(originalcolorsnames))
+    if isValidUser: #authentication successful; execute service
+      matchedarticles = list();
+      #present_query = myArticle.query(myArticle.articletype == data['category'])
+      present_query = myArticle.query(myArticle.articletype == category, myArticle.articleowner == email)
 
-    else:
-      logging.info('no image found for this article')
+      categoryarticles = present_query.fetch()
+      logging.info("category articles: " + str(categoryarticles))
 
-    # find all the matches
-    currentarticle = {}
-    for article in categoryarticles:
-      currentarticle = {'articleName':article.articlename,'articleOwner':article.articleowner,'articlePrivate':article.articleprivate,'articleId':article.articleid,'articleType':article.articletype,'articleImageUrl':article.articleimageurl,'articleLastUsed':article.articlelastused,'articleTimesUsed':article.articletimesused,'articleTags':article.articletags,'articlePrice':article.articleprice,'articleDescription':article.articledescription,'articleOkToSell':article.articleoktosell}
-      logging.info("current article name: " + str(article.articlename))
-      #load current image and get colors array
-      #logging.info("article image url: " + str(article.articleimageurl))
-      image_query = articleImage.query(articleImage.imagefileurl == article.articleimageurl)
-      currentimage = image_query.get()
-      if (not currentimage == None):
-        #logging.info("current image is : " + str(currentimage))
-        currentcolors = currentimage.colors
-        logging.info("current image colors are : " + str(currentcolors))
-        matched = 'false'
-        for oricolor in originalcolors:
-          if oricolor in currentcolors:
-            logging.info("match found: " + str(oricolor))
-            matched = 'true'
-        if not matched == 'false':
-          matchedarticles.append(currentarticle)
-          logging.info("matched article: " + str(article.articlename))
+      # get the colors of the original item
+      ori_image_query = articleImage.query(articleImage.imagearticleid == data['articleId'])
+      oriimage = ori_image_query.get()
+      if (not oriimage == None):
+        logging.info("original image is : " + str(oriimage))
+        originalcolors = oriimage.colors
+        logging.info("original image colors are : " + str(originalcolors))
+        #get original image's nearest colors name
+        #originalcolorsnames = list()
+        #for hexcolor in originalcolors:
+         # colorname = self.get_color_name(hexcolor)
+         # logging.info("colorname: " + str(colorname))
+         # originalcolorsnames.append(colorname)
+       # logging.info("original image colors name are : " + str(originalcolorsnames))
+
       else:
-        logging.info('no image found for this article')  
+        logging.info('no image found for this article')
 
-    payload = {'articleList':matchedarticles}
-    logging.info("MatchedResultList: " + str(matchedarticles))
+      # find all the matches
+      currentarticle = {}
+      for article in categoryarticles:
+        currentarticle = {'articleName':article.articlename,'articleOwner':article.articleowner,'articlePrivate':article.articleprivate,'articleId':article.articleid,'articleType':article.articletype,'articleImageUrl':article.articleimageurl,'articleLastUsed':article.articlelastused,'articleTimesUsed':article.articletimesused,'articleTags':article.articletags,'articlePrice':article.articleprice,'articleDescription':article.articledescription,'articleOkToSell':article.articleoktosell, 'articleColors':article.articlecolors}
+        logging.info("current article name: " + str(article.articlename))
+        #load current image and get colors array
+        #logging.info("article image url: " + str(article.articleimageurl))
+        image_query = articleImage.query(articleImage.imagefileurl == article.articleimageurl)
+        currentimage = image_query.get()
+        if (not currentimage == None):
+          #logging.info("current image is : " + str(currentimage))
+          currentcolors = currentimage.colors
+          logging.info("current image colors are : " + str(currentcolors))
+          matched = 'false'
+          for oricolor in originalcolors:
+            if oricolor in currentcolors:
+              logging.info("match found: " + str(oricolor))
+              matched = 'true'
+          if not matched == 'false':
+            matchedarticles.append(currentarticle)
+            logging.info("matched article: " + str(article.articlename))
+        else:
+          logging.info('no image found for this article')  
 
-    result = json.dumps(payload)
+      payload = {'articleList':matchedarticles}
+      logging.info("MatchedResultList: " + str(matchedarticles))
+
+      result = json.dumps(payload)
+    else: # authentication failed
+      logging.info('user authentication failed');
+      result = json.dumps({'errorcode': -2}) # Error code -2: token 
+
     self.response.write(result)
 
 class UpdateArticleImageColors(webapp2.RequestHandler):
