@@ -962,7 +962,7 @@ class ReadArticle(webapp2.RequestHandler):
         logging.info(str(self.request))
         try:
           data = json.loads(self.request.body)
-          logging.info('json data received: ' + str(data)) 
+          logging.info('json data sent to ReadArticle Service: ' + str(data)) 
           articleId = data['articleId']
         except:
           articleId = self.request.get('articleId')
@@ -980,6 +980,37 @@ class ReadArticle(webapp2.RequestHandler):
         pass
     except:
       result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+    self.response.write(result)
+
+class AndroidReadArticle(webapp2.RequestHandler):
+  def post(self):
+    try:
+      data = json.loads(self.request.body)
+      logging.info('json data sent to ReadArticle Service: ' + str(data)) 
+      articleId = data['articleId']
+      
+      # authenticate user tokenid
+      tokenId = data['tokenId']
+      isValidUser = authenticate_user(tokenId)
+      logging.info('isValidUser: ' + str(isValidUser))
+
+      if isValidUser: #authentication successful; execute service
+        present_query = myArticle.query(myArticle.articleid == articleId)
+        logging.info('Created query')
+        try:
+          existsarticle = present_query.get()
+          returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articlePrivate':existsarticle.articleprivate,'articleColors':existsarticle.articlecolors}
+          logging.info('Query returned: ' + str(existsarticle))
+          result = json.dumps(returnarticle)
+        except:
+          pass
+      else: # authentication failed
+        logging.info('user authentication failed');
+        result = json.dumps({'errorcode': -2}) # Error code -2: token
+    except:
+      logging.info('Error getting request data')
+      result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+
     self.response.write(result)
 
 class UseArticle(webapp2.RequestHandler):
@@ -2347,7 +2378,8 @@ app = webapp2.WSGIApplication([
     ('/GetUserAccount', GetUserAccount),
     ('/FindMatch', FindMatch),
     ('/UpdateArticleImageColors', UpdateArticleImageColors),
-    ('/TokenSignin', TokenSignin)
+    ('/TokenSignin', TokenSignin),
+    ('/AndroidReadArticle', AndroidReadArticle)
 ], debug=True, config=config)
 
 logging.getLogger().setLevel(logging.DEBUG)
