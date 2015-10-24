@@ -986,25 +986,35 @@ class UseArticle(webapp2.RequestHandler):
   def post(self):
     try:
       data = json.loads(self.request.body)
-      logging.info('Json data sent to this function: ' + str(data))
-      logging.info("Article ID: " + str(data['articleId']))
-      present_query = myArticle.query(myArticle.articleid == data['articleId'])
-      logging.info('Created query')
-      try:
-        existsarticle = present_query.get()
-        logging.info('Query returned: ' + str(existsarticle))
-        usedate = str(datetime.datetime.now().date())
-        logging.info('Use date is: ' + usedate)
-        tempusedlist = existsarticle.articlelastused
-        tempusedlist.append(usedate)
-        logging.info("Appended date")
-        existsarticle.articletimesused = len(tempusedlist)
-        logging.info('Times used is now: ' + str(len(tempusedlist)))
-        existsarticle.articlelastused = tempusedlist
-        existsarticle.put()
-        result = json.dumps({'errorcode':0})
-      except:
-        result = json.dumps({'errorcode':8}) #Error code 8: unable to update uses for article
+      logging.info('Json data sent to UseArticle function: ' + str(data))
+      # logging.info("tokenId: " + str(data['tokenId']))
+      # logging.info("Article ID: " + str(data['articleId']))
+
+      tokenId = data['tokenId']
+      isValidUser = authenticate_user(tokenId)
+      logging.info('isValidUser: ' + str(isValidUser))
+
+      if isValidUser: #authentication successful; execute service
+        present_query = myArticle.query(myArticle.articleid == data['articleId'])
+        logging.info('Created query')
+        try:
+          existsarticle = present_query.get()
+          logging.info('Query returned: ' + str(existsarticle))
+          usedate = str(datetime.datetime.now().date())
+          logging.info('Use date is: ' + usedate)
+          tempusedlist = existsarticle.articlelastused
+          tempusedlist.append(usedate)
+          logging.info("Appended date")
+          existsarticle.articletimesused = len(tempusedlist)
+          logging.info('Times used is now: ' + str(len(tempusedlist)))
+          existsarticle.articlelastused = tempusedlist
+          existsarticle.put()
+          result = json.dumps({'errorcode':0})
+        except:
+          result = json.dumps({'errorcode':8}) #Error code 8: unable to update uses for article
+      else: #authentication failed
+        logging.info('user authentication failed');
+        result = json.dumps({'errorcode': -2}) # Error code -2: token
     except:
       result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
     self.response.write(result)
