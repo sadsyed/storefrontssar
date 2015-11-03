@@ -52,6 +52,7 @@ from colormath.color_conversions import convert_color
 
 from oauth2client import client, crypt
 import httplib2
+from authenticate import authenticate_user
 
 APP_ID_GLOBAL = 'moonlit-shadow-813.appspot.com'
 STORAGE_ID_GLOBAL = 'moonlit-shadow-813'
@@ -490,11 +491,12 @@ class CreateArticle(webapp2.RequestHandler):
   def post(self):
     try:
       data = json.loads(self.request.body)
-      logging.info('Json data sent to this function: ' + str(data))
+      logging.info('Json data sent to CreateArticle function: ' + str(data))
       logging.info("Article Name: " + str(data['articleName']))
       present_query = myArticle.query(myArticle.articlename == data['articleName'])
       logging.info('Created query')
       articlereturnid = str(uuid.uuid1())
+<<<<<<< HEAD
       try:
         existsarticle = present_query.get()
         logging.info('Query returned: ' + str(existsarticle))
@@ -542,6 +544,62 @@ class CreateArticle(webapp2.RequestHandler):
           result = json.dumps({'returnval':5}) # Error code 5: Article already exists
       except:
         result = json.dumps({'returnval':2}) # Error code 2: error writing to datastore
+=======
+
+      # authenticate user tokenid
+      tokenId = data['tokenId']
+      isValidUser = authenticate_user(tokenId)
+      logging.info('isValidUser: ' + str(isValidUser))
+    
+      if isValidUser:
+        try:
+          existsarticle = present_query.get()
+          logging.info('Query returned: ' + str(existsarticle))
+          if(existsarticle == None):
+            thisArticle = myArticle(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+            logging.info('Got key')
+            thisArticle.articlename = data['articleName']
+            logging.info('After article name')
+            thisArticle.articledescription = data['articleDescription']
+            thisArticle.articleid = articlereturnid
+            thisArticle.articlelastused = list()
+            thisArticle.articletimesused = 0
+            thisArticle.articleowner = data['articleOwner']
+            thisArticle.articletype = data['articleType']
+            logging.info('After article type')
+            #TODO: Create a list processor for tags
+            tags = list()
+            tags.append(data['articleTags'])
+            logging.info('pulled tag list')
+            thisArticle.articletags = tags
+            logging.info('done with taglist')
+            #TODO: Process price
+            val = 0.0
+            try:
+              val = int(data['articlePrice'])
+            except ValueError:
+              val = float(data['articlePrice'])
+            thisArticle.articleprice = val
+            logging.info("Got article price")
+            oktosell = False
+            if data['articleOkToSell'] == 'true':
+              oktosell = True
+            thisArticle.articleoktosell = oktosell
+            aprivate = False
+            if data['articlePrivate'] == 'true':
+              aprivate = True
+            thisArticle.articleprivate = aprivate
+            logging.info('This article: ' + str(thisArticle))
+            thisArticle.put()
+            result = json.dumps({'returnval':articlereturnid}) # Error code 0: Success
+          else:
+            result = json.dumps({'returnval':5}) # Error code 5: Article already exists
+        except:
+          result = json.dumps({'returnval':2}) # Error code 2: error writing to datastore
+      else: #authentication failed
+        logging.info('user authentication failed');
+        result = json.dumps({'errorcode': -2}) # Error code -2: token authentication failed
+>>>>>>> googlesignin
     except:
       result = json.dumps({'returnval':1}) # No corred json data
     self.response.write(result)
@@ -778,83 +836,93 @@ class AndroidUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
           'Access-Control-Allow-Headers'
       ] = 'Content-Type, Content-Range, Content-Disposition'
 
-
   def handle_android_upload(self):
     #try:
+    tokenId = self.request.headers['tokenId']
     articleid = self.request.headers['articleid']
     logging.info('Article ID is: ' + str(articleid))
-    logging.info('Check if article exists')
-    present_query = myArticle.query(myArticle.articleid  == articleid)
-    existsarticle = present_query.get()
-    comments = ""
-    if not existsarticle == None:
-      imageid = str(uuid.uuid1())
-      bucket_name = os.environ.get('BUCKET_NAME', app_identity.get_default_gcs_bucket_name())
-      logging.info("My bucket name is: " + str(bucket_name))
-      bucket = '/' + bucket_name
-      filename = bucket + '/' + articleid + '/' + imageid
-      try:
-        myimagefile = self.request.get('imageFile')
-      except:
-        logging.info("Imagefile not retrieved from self.request")
-      result = {}
-      creationdate = str(datetime.datetime.now().date())
-      logging.info("starting to write file to store")
-    # Create a GCS file with GCS client.
-      with gcs.open(filename, 'w') as f:
-        f.write(myimagefile)
-    # Blobstore API requires extra /gs to distinguish against blobstore files.
-      blobstore_filename = '/gs' + filename
-      blob_key = blobstore.create_gs_key(blobstore_filename)
-      logging.info("Trying to get url for blob key: " + str(blob_key))
 
-    # extract the colors from the image
-      # get image 
-      #blob_reader = blobstore.BlobReader(blob_key)
-      #img = Image.open(blob_reader)
-      #w, h = img.size
-      
-      #hexcolors = self.remove_background(blob_key)
-      #hexcolors = self.remove_background_pil(blob_key)
-      #logging.info("removed background, now hexcolors are : " + str(hexcolors))
+    # authenticate user tokenid
+    isValidUser = authenticate_user(tokenId)
+    logging.info('isValidUser: ' + str(isValidUser))
 
-      # find hex colors
-      #hexcolors = self.colorz(blob_key)
-      #logging.info("hexcolors are : " + str(hexcolors))
+    if isValidUser: #authentication successful; execute service
+      logging.info('Check if article exists')
+      present_query = myArticle.query(myArticle.articleid  == articleid)
+      existsarticle = present_query.get()
+      comments = ""
 
-      # get color names
-      colors = list()
-      colors.append("white")
-      
-      #for color in hexcolors:
-      #  colorname = self.get_color_name(color)
-      #  logging.info("colorname: " + str(colorname))
-      #  colors.append(colorname)
-      #logging.info("colors are : " + str(colors))
+      if not existsarticle == None:
+        imageid = str(uuid.uuid1())
+        bucket_name = os.environ.get('BUCKET_NAME', app_identity.get_default_gcs_bucket_name())
+        logging.info("My bucket name is: " + str(bucket_name))
+        bucket = '/' + bucket_name
+        filename = bucket + '/' + articleid + '/' + imageid
+        try:
+          myimagefile = self.request.get('imageFile')
+        except:
+          logging.info("Imagefile not retrieved from self.request")
+        result = {}
+        creationdate = str(datetime.datetime.now().date())
+        logging.info("starting to write file to store")
+      # Create a GCS file with GCS client.
+        with gcs.open(filename, 'w') as f:
+          f.write(myimagefile)
+      # Blobstore API requires extra /gs to distinguish against blobstore files.
+        blobstore_filename = '/gs' + filename
+        blob_key = blobstore.create_gs_key(blobstore_filename)
+        logging.info("Trying to get url for blob key: " + str(blob_key))
 
-      try:
-        result['url'] = images.get_serving_url(
-            blob_key,
-        )
-      except:
-        logging.info("Could not get serving url")
-        result['url'] = ""
-      logging.info("Result url: " + str(result['url']))
+      # extract the colors from the image
+        # get image 
+        #blob_reader = blobstore.BlobReader(blob_key)
+        #img = Image.open(blob_reader)
+        #w, h = img.size
+        
+        #hexcolors = self.remove_background(blob_key)
+        #hexcolors = self.remove_background_pil(blob_key)
+        #logging.info("removed background, now hexcolors are : " + str(hexcolors))
 
-      myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
-      myimage.imageid = imageid
-      myimage.imagefileurl = result['url']
-      myimage.imagecreationdate = creationdate
-      myimage.imagearticleid = articleid
-      #myimage.colors = colors
-      myimage.put()
-      existsarticle.articleimageurl = myimage.imagefileurl
-      existsarticle.articlecolors = colors
-      existsarticle.put()
+        # find hex colors
+        #hexcolors = self.colorz(blob_key)
+        #logging.info("hexcolors are : " + str(hexcolors))
 
-    #except:
-      #logging.info("exception uploading files")
+        # get color names
+        colors = list()
+        colors.append("white")
+        
+        #for color in hexcolors:
+        #  colorname = self.get_color_name(color)
+        #  logging.info("colorname: " + str(colorname))
+        #  colors.append(colorname)
+        #logging.info("colors are : " + str(colors))
 
+        try:
+          result['url'] = images.get_serving_url(
+              blob_key,
+          )
+        except:
+          logging.info("Could not get serving url")
+          result['url'] = ""
+        logging.info("Result url: " + str(result['url']))
+
+        myimage = articleImage(parent=ndb.Key(STORAGE_ID_GLOBAL, STORAGE_ID_GLOBAL))
+        myimage.imageid = imageid
+        myimage.imagefileurl = result['url']
+        myimage.imagecreationdate = creationdate
+        myimage.imagearticleid = articleid
+        myimage.colors = colors
+        myimage.put()
+        existsarticle.articleimageurl = myimage.imagefileurl
+        existsarticle.articlecolors = colors
+        existsarticle.put()
+
+      #except:
+        #logging.info("exception uploading files")
+    else: # authenrication failed
+      logging.info('user authentication failed');
+      result = json.dumps({'errorcode': -2}) # Error code -2: token  
+    
     return result
 
   def options(self):
@@ -958,7 +1026,7 @@ class ReadArticle(webapp2.RequestHandler):
         logging.info(str(self.request))
         try:
           data = json.loads(self.request.body)
-          logging.info('json data received: ' + str(data)) 
+          logging.info('json data sent to ReadArticle Service: ' + str(data)) 
           articleId = data['articleId']
         except:
           articleId = self.request.get('articleId')
@@ -978,29 +1046,76 @@ class ReadArticle(webapp2.RequestHandler):
       result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
     self.response.write(result)
 
+class AndroidReadArticle(webapp2.RequestHandler):
+  def post(self):
+    try:
+      data = json.loads(self.request.body)
+      logging.info('json data sent to ReadArticle Service: ' + str(data)) 
+      articleId = data['articleId']
+      email = data['email']
+      
+      # authenticate user tokenid
+      tokenId = data['tokenId']
+      isValidUser = authenticate_user(tokenId)
+      logging.info('isValidUser: ' + str(isValidUser))
+
+      if isValidUser: #authentication successful; execute service
+        present_query = myArticle.query(myArticle.articleid == articleId)
+        logging.info('Created query')
+        try:
+          existsarticle = present_query.get()
+
+          # return if article is owned by the requested user
+          if existsarticle.articleowner in email:
+            returnarticle = {'errorcode':0, 'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articlePrivate':existsarticle.articleprivate,'articleColors':existsarticle.articlecolors}
+            logging.info('Query returned: ' + str(existsarticle))
+            result = json.dumps(returnarticle)
+          else:
+            result = json.dumps({'errorcode':1,'errormsg':"no article found"})
+        except:
+          pass
+      else: # authentication failed
+        logging.info('user authentication failed');
+        result = json.dumps({'errorcode': -2}) # Error code -2: token
+    except:
+      logging.info('Error getting request data')
+      result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+
+    self.response.write(result)
+
 class UseArticle(webapp2.RequestHandler):
   def post(self):
     try:
       data = json.loads(self.request.body)
-      logging.info('Json data sent to this function: ' + str(data))
-      logging.info("Article ID: " + str(data['articleId']))
-      present_query = myArticle.query(myArticle.articleid == data['articleId'])
-      logging.info('Created query')
-      try:
-        existsarticle = present_query.get()
-        logging.info('Query returned: ' + str(existsarticle))
-        usedate = str(datetime.datetime.now().date())
-        logging.info('Use date is: ' + usedate)
-        tempusedlist = existsarticle.articlelastused
-        tempusedlist.append(usedate)
-        logging.info("Appended date")
-        existsarticle.articletimesused = len(tempusedlist)
-        logging.info('Times used is now: ' + str(len(tempusedlist)))
-        existsarticle.articlelastused = tempusedlist
-        existsarticle.put()
-        result = json.dumps({'errorcode':0})
-      except:
-        result = json.dumps({'errorcode':8}) #Error code 8: unable to update uses for article
+      logging.info('Json data sent to UseArticle function: ' + str(data))
+      # logging.info("tokenId: " + str(data['tokenId']))
+      # logging.info("Article ID: " + str(data['articleId']))
+
+      tokenId = data['tokenId']
+      isValidUser = authenticate_user(tokenId)
+      logging.info('isValidUser: ' + str(isValidUser))
+
+      if isValidUser: #authentication successful; execute service
+        present_query = myArticle.query(myArticle.articleid == data['articleId'])
+        logging.info('Created query')
+        try:
+          existsarticle = present_query.get()
+          logging.info('Query returned: ' + str(existsarticle))
+          usedate = str(datetime.datetime.now().date())
+          logging.info('Use date is: ' + usedate)
+          tempusedlist = existsarticle.articlelastused
+          tempusedlist.append(usedate)
+          logging.info("Appended date")
+          existsarticle.articletimesused = len(tempusedlist)
+          logging.info('Times used is now: ' + str(len(tempusedlist)))
+          existsarticle.articlelastused = tempusedlist
+          existsarticle.put()
+          result = json.dumps({'errorcode':0})
+        except:
+          result = json.dumps({'errorcode':8}) #Error code 8: unable to update uses for article
+      else: #authentication failed
+        logging.info('user authentication failed');
+        result = json.dumps({'errorcode': -2}) # Error code -2: token
     except:
       result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
     self.response.write(result)
@@ -1096,247 +1211,260 @@ class UpdateArticle(webapp2.RequestHandler):
     result = None
     fieldsupdated = None
     logging.info(str(self.request))
-    try:
+    try: 
       data = {}
-      try:
-        data = json.loads(self.request.body)
-        if data['append'] == 'false':
-          try:
-            tagtemp = data['articleTags']
-            if type(tagtemp) == list:
-              logging.info('tags already a list, do nothing')
-            else:
-              data['articleTags'] = [data['articleTags']]
-              logging.info('make tags a list: ' + str(data['articleTags']))
-          except:
-            pass
-          try:
-            colorstemp = data['articleColors']
-            if type(colorstemp) == list:
-              logging.info('colors already a list, do nothing')
-            else:
-              data['articleColors'] = [data['articleColors']]
-              logging.info('make colors a list: ' + str(data['articleColors']))
-          except:
-            pass
-          try:
-            usedlisttemp = data['articleLastUsed']
-            if type(usedlisttemp) == list:
-              logging.info('used list already a list, do nothing')
-            else:
-              data['articleLastUsed'] = [data['articleLastUsed']]
-              logging.info('article last used a string, making it a list')
-          except:
-            pass
-        else:
-          try:
-            tagtemp = data['articleTags']
-            if type(tagtemp) == list:
-              data['articleTags'] = data['articleTags'][0]
-            else:
-              pass
-          except:
-            pass
-          try:
-            usedlisttemp = data['articleLastUsed']
-            if type(usedlisttemp) == list:
-              data['articleLastUsed'] = data['articleLastUsed'][0]
-            else:
-              pass
-          except:
-            pass
-        try:       
-          temp = data['articlePrivate']
-          data['articlePrivate'] = temp.lower()
-        except:
-          pass
-        logging.info('Got json data')
-      except:
-        logging.info('trying to get request data')
+      data = json.loads(self.request.body)
+      logging.info('Json data sent to UpdateArticle function: ' + str(data))
 
-        data['articleId'] = self.request.get('articleId')
-        data['articleOwner'] = self.request.get('articleOwner')
-        temp = self.request.get('articlePrivate')
-        data['articlePrivate'] = temp.lower()
-        data['articleType'] = self.request.get('articleType')
-        data['append'] = self.request.get('append')
-        if not data['append'] == "":
+      # authenticate user tokenid
+      tokenId = data['tokenId']
+      isValidUser = authenticate_user(tokenId)
+      logging.info('isValidUser: ' + str(isValidUser))
+
+      if isValidUser: # authentication successful; execute service
+        try:
           if data['append'] == 'false':
-            logging.info('append is false')
-            lastusedtemp = self.request.get('articleLastUsed')
-            logging.info('last used temp is: ' + str(lastusedtemp))
-            if type(lastusedtemp) == list:
-              logging.info('last used temp is list')
-              data['articleLastUsed'] = lastusedtemp
-            else:
-              if not lastusedtemp == "":
-                logging.info('making last used temp a list')
-                data['articleLastUsed'] = [lastusedtemp]
+            try:
+              tagtemp = data['articleTags']
+              if type(tagtemp) == list:
+                logging.info('tags already a list, do nothing')
               else:
-                logging.info('Didnt get any last used dates')
-            tagtemp = self.request.get('articleTags')
-            if type(tagtemp) == list:
-              logging.info('tag temp is a list')
-              data['articleTags'] = tagtemp
-            else:
-              if not tagtemp == "":
-                logging.info('tag temp is a string, and not empty making a list')
-                data['articleTags'] = [tagtemp]
-                logging.info('tag temp is nowC' + str(data['articleTags']))
+                data['articleTags'] = [data['articleTags']]
+                logging.info('make tags a list: ' + str(data['articleTags']))
+            except:
+              pass
+            try:
+              colorstemp = data['articleColors']
+              if type(colorstemp) == list:
+                logging.info('colors already a list, do nothing')
               else:
-                logging.info('Didnt get any tags')
-            colorstemp = self.request.get('articleColors')
-            if type(colorstemp) == list:
-              logging.info('colors temp is a list')
-              data['articleColors'] = colorstemp
-            else:
-              if not colorstemp == "":
-                logging.info('colors temp is a string, and not empty making a list')
-                data['articleColors'] = [colorstemp]
-                logging.info('colors temp is now' + str(data['articleColors']))
+                data['articleColors'] = [data['articleColors']]
+                logging.info('make colors a list: ' + str(data['articleColors']))
+            except:
+              pass
+            try:
+              usedlisttemp = data['articleLastUsed']
+              if type(usedlisttemp) == list:
+                logging.info('used list already a list, do nothing')
               else:
-                logging.info('Didnt get any colors')
+                data['articleLastUsed'] = [data['articleLastUsed']]
+                logging.info('article last used a string, making it a list')
+            except:
+              pass
           else:
-            data['articleLastUsed'] = self.request.get('articleLastUsed')
-            data['articleTags'] = self.request.get('articleTags')
-            data['articleColors'] = self.request.get('articleColors')
-        data['articlePrice'] = self.request.get('articlePrice')
-        data['articleDescription'] = self.request.get('articleDescription')
-        data['articleOkToSell'] = self.request.get('articleOkToSell')
-        data['articleDelete'] = self.request.get('articleDelete')
-      logging.info('Json data sent to this function: ' + str(data))
-      present_query = myArticle.query(myArticle.articleid == data['articleId'])
-      logging.info('Created query')
-      fieldsupdated = list()
-      try:
-        existsarticle = present_query.get()
-        logging.info('Query returned: ' + str(existsarticle))
-        try:
-          if data['articlePrivate'] == 'true':
-            existsarticle.articleprivate = True
-            logging.info('updated article private to True')
-            fieldsupdated.append('articlePrivate')
-          elif data['articlePrivate'] == 'false':
-            existsarticle.articleprivate = False
-            logging.info('updated article private to False')
-            fieldsupdated.append('articlePrivate')
-          else:
-            logging.info('No updates made to article private')
+            try:
+              tagtemp = data['articleTags']
+              if type(tagtemp) == list:
+                data['articleTags'] = data['articleTags'][0]
+              else:
+                pass
+            except:
+              pass
+            try:
+              usedlisttemp = data['articleLastUsed']
+              if type(usedlisttemp) == list:
+                data['articleLastUsed'] = data['articleLastUsed'][0]
+              else:
+                pass
+            except:
+              pass
+          try:       
+            temp = data['articlePrivate']
+            data['articlePrivate'] = temp.lower()
+          except:
+            pass
+          logging.info('Got json data')
         except:
-          logging.info('no new value for article private')
-        try:
-          if not data['articleOwner'] == "":
-            existsarticle.articleowner = data['articleOwner']
-            logging.info('articleOwner Updated: ' + str(data['articleOwner']))
-            fieldsupdated.append('articleOwner')
-        except:
-          logging.info('No new value for article Owner')
-        try:
-          if not data['articleType'] == "":
-            existsarticle.articletype = data['articleType'] 
-            fieldsupdated.append('articleType')
-            logging.info('articletype updated')
-        except:
-          logging.info('No new article Type')
-        try:
+          logging.info('trying to get request data')
+
+          data['articleId'] = self.request.get('articleId')
+          data['articleOwner'] = self.request.get('articleOwner')
+          temp = self.request.get('articlePrivate')
+          data['articlePrivate'] = temp.lower()
+          data['articleType'] = self.request.get('articleType')
+          data['append'] = self.request.get('append')
           if not data['append'] == "":
             if data['append'] == 'false':
-              logging.info("Replacing whole last used list.")
-              try:
-                if not data['articleLastUsed'] == "":
-                  existsarticle.articlelastused = data['articleLastUsed']
-                  existsarticle.articletimesused = len(data['articleLastUsed'])
-                  fieldsupdated.append('articleLastUsed')
-                  logging.info('successfully update full list of article last used')
-              except:
-                logging.info('no article last used set')
-              try:
-                  logging.info("Replacing whole taglist.")
-                  existsarticle.articletags = data['articleTags']
-                  fieldsupdated.append('articleTags')
-              except:
-                logging.info('no article tags set')
-              try:
-                  logging.info("Replacing whole colorslist.")
-                  existsarticle.articlecolors = data['articleColors']
-                  fieldsupdated.append('articleColors')
-              except:
-                logging.info('no article colors set')
+              logging.info('append is false')
+              lastusedtemp = self.request.get('articleLastUsed')
+              logging.info('last used temp is: ' + str(lastusedtemp))
+              if type(lastusedtemp) == list:
+                logging.info('last used temp is list')
+                data['articleLastUsed'] = lastusedtemp
+              else:
+                if not lastusedtemp == "":
+                  logging.info('making last used temp a list')
+                  data['articleLastUsed'] = [lastusedtemp]
+                else:
+                  logging.info('Didnt get any last used dates')
+              tagtemp = self.request.get('articleTags')
+              if type(tagtemp) == list:
+                logging.info('tag temp is a list')
+                data['articleTags'] = tagtemp
+              else:
+                if not tagtemp == "":
+                  logging.info('tag temp is a string, and not empty making a list')
+                  data['articleTags'] = [tagtemp]
+                  logging.info('tag temp is nowC' + str(data['articleTags']))
+                else:
+                  logging.info('Didnt get any tags')
+              colorstemp = self.request.get('articleColors')
+              if type(colorstemp) == list:
+                logging.info('colors temp is a list')
+                data['articleColors'] = colorstemp
+              else:
+                if not colorstemp == "":
+                  logging.info('colors temp is a string, and not empty making a list')
+                  data['articleColors'] = [colorstemp]
+                  logging.info('colors temp is now' + str(data['articleColors']))
+                else:
+                  logging.info('Didnt get any colors')
             else:
-              try:
-                if not data['articleLastUsed'] == "":
-                  logging.info('Appending item to last used list: ' + str(data['articleLastUsed']))
-                  templist = existsarticle.articlelastused
-                  logging.info('current list is: ' + str(templist))
-                  templist.append(data['articleLastUsed'])
-                  existsarticle.articletimesused = len(templist)
-                  existsarticle.articlelastused = templist
-                  fieldsupdated.append('articleLastUsed')
-              except:
-                logging.info('no value for article last used set')
-              try:
-                if not data['articleTags'] == "":
-                  logging.info('Appending item to tag list')
-                  templist = existsarticle.articletags
-                  templist.append(data['articleTags'])
-                  existsarticle.articletags = templist
-                  fieldsupdated.append('articleTags')
-              except:
-                logging.info('no value for article tags set')
-              try:
-                if not data['articleColors'] == "":
-                  logging.info('Appending item to colors list')
-                  templist = existsarticle.articlecolors
-                  templist.append(data['articleColors'])
-                  existsarticle.articlecolors = templist
-                  fieldsupdated.append('articleColors')
-              except:
-                logging.info('no value for article tags set')
-          else:
-            waserror = true # did not specify append or replace
-        except:
-          logging.info('missing append, article tags, or article last used')
-        val = 0.0
+              data['articleLastUsed'] = self.request.get('articleLastUsed')
+              data['articleTags'] = self.request.get('articleTags')
+              data['articleColors'] = self.request.get('articleColors')
+          data['articlePrice'] = self.request.get('articlePrice')
+          data['articleDescription'] = self.request.get('articleDescription')
+          data['articleOkToSell'] = self.request.get('articleOkToSell')
+          data['articleDelete'] = self.request.get('articleDelete')
+        logging.info('Json data sent to UpdateArticle function: ' + str(data))
+        present_query = myArticle.query(myArticle.articleid == data['articleId'])
+        logging.info('Created query')
+        fieldsupdated = list()
         try:
-          if not data['articlePrice'] == "":
-            logging.info("Trying to update: " + str(data['articlePrice']))
-            try:
-              val = int(data['articlePrice'])
-              logging.info("Got past int val.")
-            except ValueError:
-              val = float(data['articlePrice'])
-              logging.info('got past float val.')
-            existsarticle.articleprice = val
-            fieldsupdated.append('articlePrice')
-        except:
-          logging.info('no value set for article price')
-        try:
-          if not data['articleDescription'] == "":
-            existsarticle.articledescription = data['articleDescription']
-            fieldsupdated.append('articleDescription')
-            logging.info("updated article description")
-        except:
-          logging.info('no value set for article description')
-        try:
-          if not data['articleOkToSell'] == "":
-            if data['articleOkToSell'] == 'true':
-              existsarticle.articleoktosell = True
-              logging.info("updating ok to sell to true")
+          existsarticle = present_query.get()
+          logging.info('Query returned: ' + str(existsarticle))
+          try:
+            if data['articlePrivate'] == 'true':
+              existsarticle.articleprivate = True
+              logging.info('updated article private to True')
+              fieldsupdated.append('articlePrivate')
+            elif data['articlePrivate'] == 'false':
+              existsarticle.articleprivate = False
+              logging.info('updated article private to False')
+              fieldsupdated.append('articlePrivate')
             else:
-              existsarticle.articleoktosell = False
-              logging.info("updating ok to sell to false")
-            fieldsupdated.append('articleOkToSell')
+              logging.info('No updates made to article private')
+          except:
+            logging.info('no new value for article private')
+          try:
+            if not data['articleOwner'] == "":
+              existsarticle.articleowner = data['articleOwner']
+              logging.info('articleOwner Updated: ' + str(data['articleOwner']))
+              fieldsupdated.append('articleOwner')
+          except:
+            logging.info('No new value for article Owner')
+          try:
+            if not data['articleType'] == "":
+              existsarticle.articletype = data['articleType'] 
+              fieldsupdated.append('articleType')
+              logging.info('articletype updated')
+          except:
+            logging.info('No new article Type')
+          try:
+            if not data['append'] == "":
+              if data['append'] == 'false':
+                logging.info("Replacing whole last used list.")
+                try:
+                  if not data['articleLastUsed'] == "":
+                    existsarticle.articlelastused = data['articleLastUsed']
+                    existsarticle.articletimesused = len(data['articleLastUsed'])
+                    fieldsupdated.append('articleLastUsed')
+                    logging.info('successfully update full list of article last used')
+                except:
+                  logging.info('no article last used set')
+                try:
+                    logging.info("Replacing whole taglist.")
+                    existsarticle.articletags = data['articleTags']
+                    fieldsupdated.append('articleTags')
+                except:
+                  logging.info('no article tags set')
+                try:
+                    logging.info("Replacing whole colorslist.")
+                    existsarticle.articlecolors = data['articleColors']
+                    fieldsupdated.append('articleColors')
+                except:
+                  logging.info('no article colors set')
+              else:
+                try:
+                  if not data['articleLastUsed'] == "":
+                    logging.info('Appending item to last used list: ' + str(data['articleLastUsed']))
+                    templist = existsarticle.articlelastused
+                    logging.info('current list is: ' + str(templist))
+                    templist.append(data['articleLastUsed'])
+                    existsarticle.articletimesused = len(templist)
+                    existsarticle.articlelastused = templist
+                    fieldsupdated.append('articleLastUsed')
+                except:
+                  logging.info('no value for article last used set')
+                try:
+                  if not data['articleTags'] == "":
+                    logging.info('Appending item to tag list')
+                    templist = existsarticle.articletags
+                    templist.append(data['articleTags'])
+                    existsarticle.articletags = templist
+                    fieldsupdated.append('articleTags')
+                except:
+                  logging.info('no value for article tags set')
+                try:
+                  if not data['articleColors'] == "":
+                    logging.info('Appending item to colors list')
+                    templist = existsarticle.articlecolors
+                    templist.append(data['articleColors'])
+                    existsarticle.articlecolors = templist
+                    fieldsupdated.append('articleColors')
+                except:
+                  logging.info('no value for article tags set')
+            else:
+              waserror = true # did not specify append or replace
+          except:
+            logging.info('missing append, article tags, or article last used')
+          val = 0.0
+          try:
+            if not data['articlePrice'] == "":
+              logging.info("Trying to update: " + str(data['articlePrice']))
+              try:
+                val = int(data['articlePrice'])
+                logging.info("Got past int val.")
+              except ValueError:
+                val = float(data['articlePrice'])
+                logging.info('got past float val.')
+              existsarticle.articleprice = val
+              fieldsupdated.append('articlePrice')
+          except:
+            logging.info('no value set for article price')
+          try:
+            if not data['articleDescription'] == "":
+              existsarticle.articledescription = data['articleDescription']
+              fieldsupdated.append('articleDescription')
+              logging.info("updated article description")
+          except:
+            logging.info('no value set for article description')
+          try:
+            if not data['articleOkToSell'] == "":
+              if data['articleOkToSell'] == 'true':
+                existsarticle.articleoktosell = True
+                logging.info("updating ok to sell to true")
+              else:
+                existsarticle.articleoktosell = False
+                logging.info("updating ok to sell to false")
+              fieldsupdated.append('articleOkToSell')
+          except:
+            logging.info('no value set for ok to sell')
+          logging.info("Seemed to get value, trying to write")
+          existsarticle.put()
         except:
-          logging.info('no value set for ok to sell')
-        logging.info("Seemed to get value, trying to write")
-        existsarticle.put()
-      except:
-        pass
-      result = {'errorcode':0, 'fieldsUpdated':fieldsupdated}  
+          pass
+        result = {'errorcode':0, 'fieldsUpdated':fieldsupdated}  
+      else: # authentication failed
+        logging.info('user authentication failed');
+        result = json.dumps({'errorcode': -2}) # Error code -2: token authentication failed   
     except:
       waserror = true
+    
     if waserror:
       result['errorcode'] = 7
+    
     result = json.dumps(result)
     logging.info('Fields updated: ' + str(fieldsupdated))
     logging.info('Result writing: ' + str(result))
@@ -1470,52 +1598,12 @@ class GetSaleCategories2(webapp2.RequestHandler):
       self.response.write(result)
 
 class GetCategories(webapp2.RequestHandler):
-    def authenticate_user(self, tokenId):
-      CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
-
-      # Check that the Access Token is valid
-      url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' % tokenId)
-
-      h = httplib2.Http()
-      #logging.info('Json data from googleapis : ' + str(h))
-      logging.info('Json data from googleapis: ' + str(h.request))
-      logging.info('Json data from googleapis request: ' + str(h.request(url, 'GET')))
-      result = json.loads(h.request(url, 'GET')[1].decode('utf-8'))
-
-      token_status = {}
-      access_status = {}
-      if result.get('error') is not None:
-        # This is not a valid token.
-        access_status['valid'] = False
-        access_status['gplus_id'] = None
-        access_status['message'] = 'Invalid Access Token.'
-      elif result['issued_to'] != CLIENT_ID:
-        # This is not meant for this app. It is VERY important to check
-        # the client ID in order to prevent man-in-the-middle attacks.
-        access_status['valid'] = False
-        access_status['gplus_id'] = None
-        access_status['message'] = 'Access Token not meant for this app.'
-      else:
-        access_status['valid'] = True
-        access_status['gplus_id'] = result['user_id']
-        access_status['message'] = 'Access Token is valid.'
-      token_status['access_token_status'] = access_status
-      logging.info('TokenSigin - token_status: ' + str(token_status))
-
-      logging.info('access_status: ' + str(access_status['valid']))
-      # if access_status[valid]
-      #   logging.info('Woohooo, token is valid')
-      #   return true;
-      # else
-      #   return false;
-      return access_status['valid']
-
     def post(self):
       data = json.loads(self.request.body)
       logging.info('Json data sent to GetCategories: ' + str(data))
 
       tokenId = data['tokenId']
-      isValidUser = self.authenticate_user(tokenId)
+      isValidUser = authenticate_user(tokenId)
       logging.info('isValidUser: ' + str(isValidUser))
 
       emailfilter = None
@@ -1558,45 +1646,62 @@ class GetCategories(webapp2.RequestHandler):
 
 class GetCategory(webapp2.RequestHandler):
   def post(self):
-    try:
-      emailfilter = None
+    data = json.loads(self.request.body)
+    logging.info('Json data sent to GetCategory service: ' + str(data))
+
+    # authenticate user tokenid
+    tokenId = data['tokenId']
+    isValidUser = authenticate_user(tokenId)
+    logging.info('isValidUser: ' + str(isValidUser))
+
+    if isValidUser: # token authentication successful; execute service
       try:
-        data = json.loads(self.request.body)
-        emailfilter = data['emailFilter']
-      except:
-        logging.info("No json data for email filter.")
-      present_query = myArticle.query(myArticle.articletype == data['category'])
-      try:
-        returnlist = list()
-        existsarticles = present_query.fetch()
-        returnarticle = {}
-        for existsarticle in existsarticles:
-          if not emailfilter == None:
-            if type(emailfilter) is list:
-              for thisowner in emailfilter:
-                if existsarticle.articleowner == thisowner:
-                  logging.info('article private: ' + str(existsarticle.articleprivate))
-                  returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate, 'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
-            else:
-              if existsarticle.articleowner == emailfilter:
-                logging.info('found match')
-                returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
-          else:
-            logging.info('article private: ' + str(existsarticle.articleprivate))
-            returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articlePrivate':existsarticle.articleprivate,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
-          if not returnarticle == {}:
-            try:
-              returnlist.index(returnarticle)
+        emailfilter = None
+        try:
+          data = json.loads(self.request.body)
+          emailfilter = data['emailFilter']
+        except:
+          logging.info("No json data for email filter.")
+        present_query = myArticle.query(myArticle.articletype == data['category'])
+        try:
+          returnlist = list()
+          existsarticles = present_query.fetch()
+          returnarticle = {}
+          for existsarticle in existsarticles:
+            # if email is provided
+            if not emailfilter == None:
+              logging.info('email provided: ' + str(emailfilter))
+              if type(emailfilter) is list:
+                # check if each email in the provided list 
+                for thisowner in emailfilter:
+                  if existsarticle.articleowner == thisowner:
+                    logging.info('list block: article private: ' + str(existsarticle.articleprivate))
+                    returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate, 'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
+              # if there's only one email
+              else:
+                if existsarticle.articleowner == emailfilter:
+                  logging.info('found match')
+                  returnarticle = {'articleName':existsarticle.articlename,'articlePrivate':existsarticle.articleprivate,'articleOwner':existsarticle.articleowner,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
+            else: # if email is not provided
+              logging.info('email is not provided')
               logging.info('article private: ' + str(existsarticle.articleprivate))
-              logging.info("no exception item already in list")
-            except:
-              logging.info("item not in list, appending")
-              returnlist.append(returnarticle)
-        result = json.dumps({'category':returnlist})
+              returnarticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articlePrivate':existsarticle.articleprivate,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell,'articleColors':existsarticle.articlecolors}
+            if not returnarticle == {}:
+              try:
+                returnlist.index(returnarticle)
+                logging.info('article private: ' + str(existsarticle.articleprivate))
+                logging.info("no exception item already in list")
+              except:
+                logging.info("item not in list, appending")
+                returnlist.append(returnarticle)
+          result = json.dumps({'category':returnlist})
+        except:
+          result = json.dumps({'errorcode': 10}) # Error code 10: No article matched filter.
       except:
-        result = json.dumps({'errorcode': 10}) # Error code 10: No article matched filter.
-    except:
-      result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+        result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data
+    else: # authenrication failed
+      logging.info('user authenrication failed');
+      result = json.dumps({'errorcode': -2}) # Error code -2: token authentication failed
     self.response.write(result)
 
 class SendEmail(BaseHandler):
@@ -1692,224 +1797,234 @@ class SearchArticles(webapp2.RequestHandler):
         logging.info(str(self.request))
         try:
           data = json.loads(self.request.body)
-          logging.info('This is what Im looking for: ' + str(data))
+          logging.info('Json data sent to SearchArticles service: ' + str(data))
           searchFilter = data['filterString'].lower()
+
+          # authenticate user tokenid
+          tokenId = data['tokenId']
+          isValidUser = authenticate_user(tokenId)
+          logging.info('isValidUser: ' + str(isValidUser))
         except:
           searchFilter = self.request.get('filterString')
-        logging.info('Filter: ' + str(searchFilter))
-        email = ""
-        try:
-          email = data['email']       
-        except:
-          logging.info('didnt get email')
-        try:  
-          filterType = data['filterType']
-        except:
-          filterType = self.request.get('filterType')
-        if filterType == 'string':
-          logging.info('The filter type is string')
-          allarticle_query = myArticle.query().order(myArticle.articletimesused)
-          allarticlesbyused = allarticle_query.fetch()
-          try:
-            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
-            templist = list()
-            if type(email) == list:
-              if len(email) > 0 :
-                logging.info('Email list is greater than 0')
-                for thisemail in email:
-                  logging.info('looking for email: ' + str(thisemail))
-                  for filteredarticle in allarticlesbyused:
-                    logging.info('article compare email: ' + str(filteredarticle.articleowner))
-                    if filteredarticle.articleowner == thisemail:
-                      templist.append(filteredarticle)
-                allarticlesbyused = templist
-              else:
-                logging.info('Count is zero')
-            else:
-              logging.info('email type is str')
-              if not email == "":               
-                for filteredarticle in allarticlesbyused:
-                  if filteredarticle.articleowner == email:
-                    templist.append(filteredarticle)
-                    logging.info("found an email match")
-                allarticlesbyused = templist
-              else:
-                logging.info('Email is empty string')
-            logging.info('all articles by used after email filter: ' + str(allarticlesbyused))
-          except:
-            logging.info('didnt get an email')
-          searchResultArticles = {}
-          searchResultList = list()
-          for searchArticle in allarticlesbyused:
-            articletype = searchArticle.articletype.lower()
-            articlename = searchArticle.articlename.lower()
-            logging.info("Type is: " + str(articletype) + " and name is: " + str(articlename))
-            if not searchFilter == "":
-              if searchFilter in articletype:
-                searchResultArticles[searchArticle.articlename] = searchArticle
-              if searchFilter in articlename:
-                searchResultArticles[searchArticle.articlename] = searchArticle
-              for thistag in searchArticle.articletags:
-                lowertag = thistag.lower()
-                if searchFilter in lowertag:
-                  searchResultArticles[searchArticle.articlename] = searchArticle
-            else:
-              logging.info('search filter is null')
+        logging.info('Search Filter: ' + str(searchFilter))
 
-        elif filterType == 'usagefilter':
-          searchdate = datetime.datetime.strptime(searchFilter, "%Y-%m-%d").date()
-          logging.info('The usage filter searchdate is: ' + str(searchdate))
-          allarticle_query = myArticle.query().order(myArticle.articletimesused)
-          allarticlesbyused = allarticle_query.fetch()
-          logging.info("Query results in ok to sell: " + str(allarticlesbyused))
+        if isValidUser: # authentication successful; execute search query
+          email = ""
           try:
-            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
-            templist = list()
-            if type(email) == list:
-              if len(email) > 0 :
-                logging.info('Email list is greater than 0')
-                for thisemail in email:
-                  for filteredarticle in allarticlesbyused:
-                    if filteredarticle.articleowner == thisemail:
-                      templist.append(filteredarticle)
-                      logging.info('found a list match')
-                allarticlesbyused = templist
-              else:
-                logging.info('Count is zero')
-            else:
-              logging.info('email type is str')
-              if not email == "":               
-                for filteredarticle in allarticlesbyused:
-                  if filteredarticle.articleowner == email:
-                    templist.append(filteredarticle)
-                    logging.info("found an email match")
-                allarticlesbyused = templist
-              else:
-                logging.info('Email is empty string')
+            email = data['email']       
           except:
-            logging.info('didnt get an email')
-          searchResultArticles = {}
-          searchResultList = list()
-
-          for searchArticle in allarticlesbyused:
-            if not searchFilter == "":
-              lastusedlist = searchArticle.articlelastused
-              logging.info('last used list is: ' + str(lastusedlist))
-              recentusefound = False
-              for useddate in lastusedlist:
-                logging.info("This use date is: " + str(useddate))
-                articledate = datetime.datetime.strptime(str(useddate), "%Y-%m-%d").date()
-                logging.info('changed to date: ' + str(articledate))
-                logging.info('searchdate is: ' + str(searchdate))
-                if articledate > searchdate:
-                  logging.info("Found an article greater than search date")
-                  recentusefound = True
+            logging.info('didnt get email')
+          try:  
+            filterType = data['filterType']
+          except:
+            filterType = self.request.get('filterType')
+          if filterType == 'string':
+            logging.info('The filter type is string')
+            allarticle_query = myArticle.query().order(myArticle.articletimesused)
+            allarticlesbyused = allarticle_query.fetch()
+            try:
+              logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+              templist = list()
+              if type(email) == list:
+                if len(email) > 0 :
+                  logging.info('Email list is greater than 0')
+                  for thisemail in email:
+                    logging.info('looking for email: ' + str(thisemail))
+                    for filteredarticle in allarticlesbyused:
+                      logging.info('article compare email: ' + str(filteredarticle.articleowner))
+                      if filteredarticle.articleowner == thisemail:
+                        templist.append(filteredarticle)
+                  allarticlesbyused = templist
                 else:
-                  logging.info('article not used recent enought')
-              if not recentusefound:
-                searchResultArticles[searchArticle.articlename] = searchArticle
-
-        elif filterType == 'neverused':
-          logging.info('The filter is neverused')  
-          allarticle_query = myArticle.query().order(myArticle.articletimesused)
-          allarticlesbyused = allarticle_query.fetch()
-          try:
-            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
-            templist = list()
-            if type(email) == list:
-              logging.info('email type is list')
-              if len(email) > 0 :
-                logging.info('Email list is greater than 0')
-                for thisemail in email:
+                  logging.info('Count is zero')
+              else:
+                logging.info('email type is str')
+                if not email == "":               
                   for filteredarticle in allarticlesbyused:
-                    if filteredarticle.articleowner == thisemail:
+                    if filteredarticle.articleowner == email:
                       templist.append(filteredarticle)
-                      logging.info('found a list match')
-                allarticlesbyused = templist
+                      logging.info("found an email match")
+                  allarticlesbyused = templist
+                else:
+                  logging.info('Email is empty string')
+              logging.info('all articles by used after email filter: ' + str(allarticlesbyused))
+            except:
+              logging.info('didnt get an email')
+            searchResultArticles = {}
+            searchResultList = list()
+            for searchArticle in allarticlesbyused:
+              articletype = searchArticle.articletype.lower()
+              articlename = searchArticle.articlename.lower()
+              logging.info("Type is: " + str(articletype) + " and name is: " + str(articlename))
+              if not searchFilter == "":
+                if searchFilter in articletype:
+                  searchResultArticles[searchArticle.articlename] = searchArticle
+                if searchFilter in articlename:
+                  searchResultArticles[searchArticle.articlename] = searchArticle
+                for thistag in searchArticle.articletags:
+                  lowertag = thistag.lower()
+                  if searchFilter in lowertag:
+                    searchResultArticles[searchArticle.articlename] = searchArticle
               else:
-                logging.info('Count is zero')
-            else:
-              logging.info('email type is str')
-              if not email == "":               
-                for filteredarticle in allarticlesbyused:
-                  if filteredarticle.articleowner == email:
-                    templist.append(filteredarticle)
-                    logging.info("found an email match")
-                allarticlesbyused = templist
+                logging.info('search filter is null')
+
+          elif filterType == 'usagefilter':
+            searchdate = datetime.datetime.strptime(searchFilter, "%Y-%m-%d").date()
+            logging.info('The usage filter searchdate is: ' + str(searchdate))
+            allarticle_query = myArticle.query().order(myArticle.articletimesused)
+            allarticlesbyused = allarticle_query.fetch()
+            logging.info("Query results in ok to sell: " + str(allarticlesbyused))
+            try:
+              logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+              templist = list()
+              if type(email) == list:
+                if len(email) > 0 :
+                  logging.info('Email list is greater than 0')
+                  for thisemail in email:
+                    for filteredarticle in allarticlesbyused:
+                      if filteredarticle.articleowner == thisemail:
+                        templist.append(filteredarticle)
+                        logging.info('found a list match')
+                  allarticlesbyused = templist
+                else:
+                  logging.info('Count is zero')
               else:
-                logging.info('Email is empty string')
-          except:
-            logging.info('didnt get an email')
-          searchResultArticles = {}
-          searchResultList = list()
-          for searchArticle in allarticlesbyused:
-            timesused = str(searchArticle.articletimesused)
-            if searchFilter == "true":
-              if timesused == "0":
-                searchResultArticles[searchArticle.articlename] = searchArticle
-                logging.info('found an item neverused.')
-            elif searchFilter == "":
-              pass
-            else:
-              if timesused == "0":
-                logging.info("timesued is zeron")
-              elif timesused == None:
+                logging.info('email type is str')
+                if not email == "":               
+                  for filteredarticle in allarticlesbyused:
+                    if filteredarticle.articleowner == email:
+                      templist.append(filteredarticle)
+                      logging.info("found an email match")
+                  allarticlesbyused = templist
+                else:
+                  logging.info('Email is empty string')
+            except:
+              logging.info('didnt get an email')
+            searchResultArticles = {}
+            searchResultList = list()
+
+            for searchArticle in allarticlesbyused:
+              if not searchFilter == "":
+                lastusedlist = searchArticle.articlelastused
+                logging.info('last used list is: ' + str(lastusedlist))
+                recentusefound = False
+                for useddate in lastusedlist:
+                  logging.info("This use date is: " + str(useddate))
+                  articledate = datetime.datetime.strptime(str(useddate), "%Y-%m-%d").date()
+                  logging.info('changed to date: ' + str(articledate))
+                  logging.info('searchdate is: ' + str(searchdate))
+                  if articledate > searchdate:
+                    logging.info("Found an article greater than search date")
+                    recentusefound = True
+                  else:
+                    logging.info('article not used recent enought')
+                if not recentusefound:
+                  searchResultArticles[searchArticle.articlename] = searchArticle
+
+          elif filterType == 'neverused':
+            logging.info('The filter is neverused')  
+            allarticle_query = myArticle.query().order(myArticle.articletimesused)
+            allarticlesbyused = allarticle_query.fetch()
+            try:
+              logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+              templist = list()
+              if type(email) == list:
+                logging.info('email type is list')
+                if len(email) > 0 :
+                  logging.info('Email list is greater than 0')
+                  for thisemail in email:
+                    for filteredarticle in allarticlesbyused:
+                      if filteredarticle.articleowner == thisemail:
+                        templist.append(filteredarticle)
+                        logging.info('found a list match')
+                  allarticlesbyused = templist
+                else:
+                  logging.info('Count is zero')
+              else:
+                logging.info('email type is str')
+                if not email == "":               
+                  for filteredarticle in allarticlesbyused:
+                    if filteredarticle.articleowner == email:
+                      templist.append(filteredarticle)
+                      logging.info("found an email match")
+                  allarticlesbyused = templist
+                else:
+                  logging.info('Email is empty string')
+            except:
+              logging.info('didnt get an email')
+            searchResultArticles = {}
+            searchResultList = list()
+            for searchArticle in allarticlesbyused:
+              timesused = str(searchArticle.articletimesused)
+              if searchFilter == "true":
+                if timesused == "0":
+                  searchResultArticles[searchArticle.articlename] = searchArticle
+                  logging.info('found an item neverused.')
+              elif searchFilter == "":
                 pass
               else:
-                searchResultArticles[searchArticle.articlename] = searchArticle
-                logging.info('found an article used at least once.')
+                if timesused == "0":
+                  logging.info("timesued is zeron")
+                elif timesused == None:
+                  pass
+                else:
+                  searchResultArticles[searchArticle.articlename] = searchArticle
+                  logging.info('found an article used at least once.')
 
-        elif filterType == 'oktosell':
-          logging.info('The filter is oktosell')  
-          allarticle_query = myArticle.query().order(myArticle.articletimesused)
-          allarticlesbyused = allarticle_query.fetch()
-          try:
-            logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
-            templist = list()
-            if type(email) == list:
-              logging.info('email type is list')
-              if len(email) > 0 :
-                logging.info('Email list is greater than 0')
-                for thisemail in email:
+          elif filterType == 'oktosell':
+            logging.info('The filter is oktosell')  
+            allarticle_query = myArticle.query().order(myArticle.articletimesused)
+            allarticlesbyused = allarticle_query.fetch()
+            try:
+              logging.info('calling reduce by email in string search: ' + str(email) + 'and query results: ' + str(allarticlesbyused))
+              templist = list()
+              if type(email) == list:
+                logging.info('email type is list')
+                if len(email) > 0 :
+                  logging.info('Email list is greater than 0')
+                  for thisemail in email:
+                    for filteredarticle in allarticlesbyused:
+                      if filteredarticle.articleowner == thisemail:
+                        templist.append(filteredarticle)
+                        logging.info('found a list match')
+                    allarticlesbyused = templist
+                else:
+                  logging.info('Count is zero')
+              else:
+                logging.info('email type is str')
+                if not email == "":               
                   for filteredarticle in allarticlesbyused:
-                    if filteredarticle.articleowner == thisemail:
+                    if filteredarticle.articleowner == email:
                       templist.append(filteredarticle)
-                      logging.info('found a list match')
+                      logging.info("found an email match")
                   allarticlesbyused = templist
-              else:
-                logging.info('Count is zero')
-            else:
-              logging.info('email type is str')
-              if not email == "":               
-                for filteredarticle in allarticlesbyused:
-                  if filteredarticle.articleowner == email:
-                    templist.append(filteredarticle)
-                    logging.info("found an email match")
-                allarticlesbyused = templist
-              else:
-                logging.info('Email is empty string')
-          except:
-            logging.info('didnt get an email')
-          searchResultArticles = {}
-          searchResultList = list()
+                else:
+                  logging.info('Email is empty string')
+            except:
+              logging.info('didnt get an email')
+            searchResultArticles = {}
+            searchResultList = list()
 
-          for searchArticle in allarticlesbyused:
-            oktosell = str(searchArticle.articleoktosell)
-            oktosell = oktosell.lower()
-            if oktosell == searchFilter:
-              searchResultArticles[searchArticle.articlename] = searchArticle
-              logging.info('found an item ok to sell.')
+            for searchArticle in allarticlesbyused:
+              oktosell = str(searchArticle.articleoktosell)
+              oktosell = oktosell.lower()
+              if oktosell == searchFilter:
+                searchResultArticles[searchArticle.articlename] = searchArticle
+                logging.info('found an item ok to sell.')
 
-        logging.info("searchResultArticles" + str(searchResultArticles))    
-        for thisArticle in searchResultArticles:
-          existsarticle = searchResultArticles[thisArticle]
-          logging.info("Adding to list article: " + str(existsarticle))
-          appendArticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articlePrivate':existsarticle.articleprivate,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
-          logging.info('created append article ' + str(appendArticle))
-          searchResultList.append(appendArticle)
+          logging.info("searchResultArticles" + str(searchResultArticles))    
+          for thisArticle in searchResultArticles:
+            existsarticle = searchResultArticles[thisArticle]
+            logging.info("Adding to list article: " + str(existsarticle))
+            appendArticle = {'articleName':existsarticle.articlename,'articleOwner':existsarticle.articleowner,'articlePrivate':existsarticle.articleprivate,'articleId':existsarticle.articleid,'articleType':existsarticle.articletype,'articleImageUrl':existsarticle.articleimageurl,'articleLastUsed':existsarticle.articlelastused,'articleTimesUsed':existsarticle.articletimesused,'articleTags':existsarticle.articletags,'articlePrice':existsarticle.articleprice,'articleDescription':existsarticle.articledescription,'articleOkToSell':existsarticle.articleoktosell}
+            logging.info('created append article ' + str(appendArticle))
+            searchResultList.append(appendArticle)
 
-        payload = {'articleList':searchResultList}
-        logging.info("SearchResultList: " + str(searchResultList))
+          payload = {'articleList':searchResultList}
+          logging.info("SearchResultList: " + str(searchResultList))
+        else: # authentication failed
+          logging.info('user authentication failed');
+          result = json.dumps({'errorcode': -2}) # Error code -2: token authentication failed
       except:
         payload = {'errorcode':6}
       result = json.dumps(payload)
@@ -2101,61 +2216,72 @@ class FindMatch(webapp2.RequestHandler):
     data = json.loads(self.request.body)
     logging.info('Json data sent to this function: ' + str(data))
 
+    tokenId = data['tokenId']
+    email = data['email']
     origarticle = data['articleId']
     category = data['category']
-    #TODO: add email filter
 
-    matchedarticles = list();
-    present_query = myArticle.query(myArticle.articletype == data['category'])
-    categoryarticles = present_query.fetch()
-    logging.info("category articles: " + str(categoryarticles))
+    isValidUser = authenticate_user(tokenId)
+    logging.info('isValidUser: ' + str(isValidUser))
 
-    # get the colors of the original item
-    ori_image_query = articleImage.query(articleImage.imagearticleid == data['articleId'])
-    oriimage = ori_image_query.get()
-    if (not oriimage == None):
-      logging.info("original image is : " + str(oriimage))
-      originalcolors = oriimage.colors
-      logging.info("original image colors are : " + str(originalcolors))
-      #get original image's nearest colors name
-      #originalcolorsnames = list()
-      #for hexcolor in originalcolors:
-       # colorname = self.get_color_name(hexcolor)
-       # logging.info("colorname: " + str(colorname))
-       # originalcolorsnames.append(colorname)
-     # logging.info("original image colors name are : " + str(originalcolorsnames))
+    if isValidUser: #authentication successful; execute service
+      matchedarticles = list();
+      #present_query = myArticle.query(myArticle.articletype == data['category'])
+      present_query = myArticle.query(myArticle.articletype == category, myArticle.articleowner == email)
 
-    else:
-      logging.info('no image found for this article')
+      categoryarticles = present_query.fetch()
+      logging.info("category articles: " + str(categoryarticles))
 
-    # find all the matches
-    currentarticle = {}
-    for article in categoryarticles:
-      currentarticle = {'articleName':article.articlename,'articleOwner':article.articleowner,'articlePrivate':article.articleprivate,'articleId':article.articleid,'articleType':article.articletype,'articleImageUrl':article.articleimageurl,'articleLastUsed':article.articlelastused,'articleTimesUsed':article.articletimesused,'articleTags':article.articletags,'articlePrice':article.articleprice,'articleDescription':article.articledescription,'articleOkToSell':article.articleoktosell}
-      logging.info("current article name: " + str(article.articlename))
-      #load current image and get colors array
-      #logging.info("article image url: " + str(article.articleimageurl))
-      image_query = articleImage.query(articleImage.imagefileurl == article.articleimageurl)
-      currentimage = image_query.get()
-      if (not currentimage == None):
-        #logging.info("current image is : " + str(currentimage))
-        currentcolors = currentimage.colors
-        logging.info("current image colors are : " + str(currentcolors))
-        matched = 'false'
-        for oricolor in originalcolors:
-          if oricolor in currentcolors:
-            logging.info("match found: " + str(oricolor))
-            matched = 'true'
-        if not matched == 'false':
-          matchedarticles.append(currentarticle)
-          logging.info("matched article: " + str(article.articlename))
+      # get the colors of the original item
+      ori_image_query = articleImage.query(articleImage.imagearticleid == data['articleId'])
+      oriimage = ori_image_query.get()
+      if (not oriimage == None):
+        logging.info("original image is : " + str(oriimage))
+        originalcolors = oriimage.colors
+        logging.info("original image colors are : " + str(originalcolors))
+        #get original image's nearest colors name
+        #originalcolorsnames = list()
+        #for hexcolor in originalcolors:
+         # colorname = self.get_color_name(hexcolor)
+         # logging.info("colorname: " + str(colorname))
+         # originalcolorsnames.append(colorname)
+       # logging.info("original image colors name are : " + str(originalcolorsnames))
+
       else:
-        logging.info('no image found for this article')  
+        logging.info('no image found for this article')
 
-    payload = {'articleList':matchedarticles}
-    logging.info("MatchedResultList: " + str(matchedarticles))
+      # find all the matches
+      currentarticle = {}
+      for article in categoryarticles:
+        currentarticle = {'articleName':article.articlename,'articleOwner':article.articleowner,'articlePrivate':article.articleprivate,'articleId':article.articleid,'articleType':article.articletype,'articleImageUrl':article.articleimageurl,'articleLastUsed':article.articlelastused,'articleTimesUsed':article.articletimesused,'articleTags':article.articletags,'articlePrice':article.articleprice,'articleDescription':article.articledescription,'articleOkToSell':article.articleoktosell, 'articleColors':article.articlecolors}
+        logging.info("current article name: " + str(article.articlename))
+        #load current image and get colors array
+        #logging.info("article image url: " + str(article.articleimageurl))
+        image_query = articleImage.query(articleImage.imagefileurl == article.articleimageurl)
+        currentimage = image_query.get()
+        if (not currentimage == None):
+          #logging.info("current image is : " + str(currentimage))
+          currentcolors = currentimage.colors
+          logging.info("current image colors are : " + str(currentcolors))
+          matched = 'false'
+          for oricolor in originalcolors:
+            if oricolor in currentcolors:
+              logging.info("match found: " + str(oricolor))
+              matched = 'true'
+          if not matched == 'false':
+            matchedarticles.append(currentarticle)
+            logging.info("matched article: " + str(article.articlename))
+        else:
+          logging.info('no image found for this article')  
 
-    result = json.dumps(payload)
+      payload = {'articleList':matchedarticles}
+      logging.info("MatchedResultList: " + str(matchedarticles))
+
+      result = json.dumps(payload)
+    else: # authentication failed
+      logging.info('user authentication failed');
+      result = json.dumps({'errorcode': -2}) # Error code -2: token 
+
     self.response.write(result)
 
 class UpdateArticleImageColors(webapp2.RequestHandler):
@@ -2251,7 +2377,9 @@ class UpdateArticleImageColors(webapp2.RequestHandler):
 
 class TokenAuthentication():
   def authenticate_user(self, tokenId):
-    CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+    logging.info('TokenAuthentication')
+    #CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+    CLIENT_ID = "40560021354-iem950p1ti5ak8t0v2qb52vnk651atuh.apps.googleusercontent.com"
 
     # Check that the Access Token is valid
     url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' % tokenId)
@@ -2261,6 +2389,7 @@ class TokenAuthentication():
     logging.info('Json data from googleapis: ' + str(h.request))
     logging.info('Json data from googleapis request: ' + str(h.request(url, 'GET')))
     result = json.loads(h.request(url, 'GET')[1].decode('utf-8'))
+    logging.info('google singin: ' + str(result))
 
     token_status = {}
     access_status = {}
@@ -2270,6 +2399,8 @@ class TokenAuthentication():
       access_status['gplus_id'] = None
       access_status['message'] = 'Invalid Access Token.'
     elif result['issued_to'] != CLIENT_ID:
+      logging.info('issued_to: ' + str(result['issued_to']))
+      logging.info('CLIENT_ID: ' + str(CLIENT_ID))
       # This is not meant for this app. It is VERY important to check
       # the client ID in order to prevent man-in-the-middle attacks.
       access_status['valid'] = False
@@ -2292,12 +2423,14 @@ class TokenAuthentication():
 
 class TokenSignin(webapp2.RequestHandler):
   def post(self):
+    logging.info('TokenSignin')
     data = json.loads(self.request.body)
     logging.info('Json data sent to TokenSignin Service: ' + str(data))
 
     tokenId = data['tokenId']
 
-    CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+    #CLIENT_ID = "40560021354-igi9o1r9gfcs4lhroefomp39egp85jes.apps.googleusercontent.com"
+    CLIENT_ID = "40560021354-iem950p1ti5ak8t0v2qb52vnk651atuh.apps.googleusercontent.com"
 
     # Check that the Access Token is valid
     url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' % tokenId)
@@ -2409,8 +2542,12 @@ app = webapp2.WSGIApplication([
     ('/FindMatch', FindMatch),
     ('/UpdateArticleImageColors', UpdateArticleImageColors),
     ('/TokenSignin', TokenSignin),
+<<<<<<< HEAD
     ('/WebTokenSignin', WebTokenSignin),
     ('/MessageHandler', MessageHandler)
+=======
+    ('/AndroidReadArticle', AndroidReadArticle)
+>>>>>>> googlesignin
 ], debug=True, config=config)
 
 logging.getLogger().setLevel(logging.DEBUG)
