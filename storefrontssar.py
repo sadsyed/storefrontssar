@@ -54,6 +54,9 @@ from oauth2client import client, crypt
 import httplib2
 from authenticate import authenticate_user
 
+import article
+from article import myArticle
+
 APP_ID_GLOBAL = 'moonlit-shadow-813.appspot.com'
 STORAGE_ID_GLOBAL = 'moonlit-shadow-813'
 #Probably not necessary to change default retry params, but here for example
@@ -81,20 +84,20 @@ class articleImage(ndb.Model):
   imagearticleid = ndb.StringProperty()
   colors = ndb.StringProperty(repeated=True)
 
-class myArticle(ndb.Model):
-  articlename = ndb.StringProperty()
-  articleowner = ndb.StringProperty()
-  articleid = ndb.StringProperty()
-  articletype = ndb.StringProperty()
-  articleimageurl = ndb.StringProperty()
-  articlelastused = ndb.StringProperty(repeated=True)
-  articletimesused = ndb.IntegerProperty()
-  articletags = ndb.StringProperty(repeated=True)
-  articleprice = ndb.FloatProperty()
-  articledescription = ndb.StringProperty()
-  articleoktosell = ndb.BooleanProperty()
-  articleprivate = ndb.BooleanProperty()
-  articlecolors = ndb.StringProperty(repeated=True)
+# class myArticle(ndb.Model):
+#   articlename = ndb.StringProperty()
+#   articleowner = ndb.StringProperty()
+#   articleid = ndb.StringProperty()
+#   articletype = ndb.StringProperty()
+#   articleimageurl = ndb.StringProperty()
+#   articlelastused = ndb.StringProperty(repeated=True)
+#   articletimesused = ndb.IntegerProperty()
+#   articletags = ndb.StringProperty(repeated=True)
+#   articleprice = ndb.FloatProperty()
+#   articledescription = ndb.StringProperty()
+#   articleoktosell = ndb.BooleanProperty()
+#   articleprivate = ndb.BooleanProperty()
+#   articlecolors = ndb.StringProperty(repeated=True)
 
 class Category:
   def __init__(self, categoryName, lastUsedArticleImageUrl):
@@ -499,6 +502,7 @@ class CreateArticle(webapp2.RequestHandler):
 
       # authenticate user tokenid
       tokenId = data['tokenId']
+      logging.info("tokenId: " + str(data['tokenId']))
       isValidUser = authenticate_user(tokenId)
       logging.info('isValidUser: ' + str(isValidUser))
     
@@ -991,6 +995,7 @@ class ReadArticle(webapp2.RequestHandler):
         logging.info('Query returned: ' + str(existsarticle))
         result = json.dumps(returnarticle)
       except:
+        result = json.dumps({'errorcode':1}) 
         pass
     except:
       result = json.dumps({'errorcode':1}) # Error code 1: Article already exists or no json data

@@ -4,12 +4,16 @@ import sys
 sys.path.insert(1, '/Applications/GoogleAppEngineLauncher.app/Contents/Resources/GoogleAppEngine-default.bundle/Contents/Resources/google_appengine')
 sys.path.insert(1, '/Applications/GoogleAppEngineLauncher.app/Contents/Resources/GoogleAppEngine-default.bundle/Contents/Resources/google_appengine/lib/yaml/lib')
 sys.path.insert(1, 'storefrontssar/lib')
+sys.path.append("..")
 
 import unittest
 
 from google.appengine.api import memcache
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
+
+import article
+from article import myArticle
 
 class TestArticleModel(ndb.Model):
 	articlename = ndb.StringProperty()
@@ -69,7 +73,7 @@ class DatastoreTestCase(unittest.TestCase):
  	# 	self.assertEqual(1, len(TestArticleModel.query().fetch(2)))
 
  	def testCreateArticle(self):
- 		entity_key = TestArticleModel(articlename="Test Article").put().urlsafe()
+ 		entity_key = myArticle(articlename="Test Article").put().urlsafe()
 
  		retrieved_entity = GetEntityViaMemcache(entity_key)
 
