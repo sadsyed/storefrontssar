@@ -2482,6 +2482,7 @@ app = webapp2.WSGIApplication([
     ('/UpdateArticle', UpdateArticle),
     ('/UpdateArticle2', UpdateArticle2),
     ('/ReadArticle', ReadArticle),
+    ('/AndroidReadArticle', AndroidReadArticle),
     ('/SendEmail', SendEmail),
     ('/GetUsers', GetUsers),
     ('/EmailPage', EmailPage),
